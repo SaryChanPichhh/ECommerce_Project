@@ -51,8 +51,8 @@ class ProductListPage extends GetView<ProductController> {
                     return ProductCard(
                       product: product,
                       onTap: () => Get.toNamed(
-                        '/products/${product.id}',
-                        arguments: product.id,
+                        '/products/:id',
+                        parameters: {'id': product.id},
                       ),
                       onEdit: () async {
                         final result = await Get.toNamed(

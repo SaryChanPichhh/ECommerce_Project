@@ -14,6 +14,7 @@ const Map<String, String> enUS = {
   'notification': 'Notification',
   'security': 'Security',
   'language': 'Language',
+  'dark_mode': 'Dark Mode',
   'legal_and_policies': 'Legal and Policies',
   'help_and_support': 'Help & Support',
   'logout': 'Logout',

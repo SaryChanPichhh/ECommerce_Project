@@ -7,6 +7,7 @@ import '../core/constants/app_constants.dart';
 import '../core/localization/app_translations.dart';
 import '../core/theme/app_theme.dart';
 import 'bindings/initial_binding.dart';
+import 'controllers/theme_controller.dart';
 import 'routes/app_pages.dart';
 
 /// Root application widget.
@@ -17,7 +18,6 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       useInheritedMediaQuery: true,
-      // locale: DevicePreview.locale(context) ?? Get.deviceLocale,
       locale: const Locale('km', 'KH'),
       fallbackLocale: const Locale('en', 'US'),
       translations: AppTranslations(),
@@ -26,7 +26,12 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      // Reactively driven by ThemeController; falls back to system if not yet loaded.
+      themeMode: Get.isRegistered<ThemeController>()
+          ? (Get.find<ThemeController>().isDark.value
+              ? ThemeMode.dark
+              : ThemeMode.light)
+          : ThemeMode.system,
       initialRoute: AppRoutes.main,
       getPages: AppPages.routes,
       initialBinding: InitialBinding(),

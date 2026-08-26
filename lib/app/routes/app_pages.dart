@@ -19,6 +19,9 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../bindings/main_nav_binding.dart';
 import '../pages/main_nav_page.dart';
 import 'app_routes.dart';
+import '../../features/cart/presentation/pages/cart_page.dart';
+import '../../features/cart/presentation/pages/payment_page.dart';
+import '../../features/cart/presentation/pages/edit_address_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/notification_page.dart';
@@ -48,6 +51,18 @@ class AppPages {
       name: AppRoutes.home,
       page: () => const HomePage(),
       binding: HomeBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.cart,
+      page: () => const CartPage(),
+    ),
+    GetPage(
+      name: AppRoutes.payment,
+      page: () => const PaymentPage(),
+    ),
+    GetPage(
+      name: AppRoutes.editAddress,
+      page: () => const EditAddressPage(),
     ),
     GetPage(
       name: AppRoutes.products,

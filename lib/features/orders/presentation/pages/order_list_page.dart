@@ -6,72 +6,203 @@ import '../../../../core/widgets/app_empty.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../controllers/order_controller.dart';
+import '../../domain/entities/order.dart';
 
 class OrderListPage extends GetView<OrderController> {
   const OrderListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: Column(
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(AppDimensions.md),
-            child: Obx(() => Row(
-              children: ['All', 'pending', 'processing', 'completed', 'cancelled'].map((status) {
-                final isSelected = (status == 'All' && controller.selectedStatus.value.isEmpty) || controller.selectedStatus.value == status;
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppDimensions.sm),
-                  child: FilterChip(label: Text(status[0].toUpperCase() + status.substring(1)), selected: isSelected, onSelected: (_) => controller.onStatusFilterChanged(status == 'All' ? '' : status)),
-                );
-              }).toList(),
-            )),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('My Orders'),
+          bottom: const TabBar(
+            indicatorColor: AppColors.primary,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: Colors.grey,
+            tabs: [
+              Tab(text: 'Order'),
+              Tab(text: 'History'),
+            ],
           ),
-          Expanded(
-            child: Obx(() {
-              if (controller.isLoading.value) return const AppLoading(message: 'Loading orders...');
-              if (controller.errorMessage.value.isNotEmpty) return AppError(message: controller.errorMessage.value, onRetry: controller.fetchOrders);
-              if (controller.orders.isEmpty) return const AppEmpty(message: 'No orders found', icon: Icons.shopping_cart_outlined);
-              return RefreshIndicator(
-                onRefresh: controller.refreshOrders,
-                child: ListView.builder(
-                  itemCount: controller.orders.length,
-                  itemBuilder: (context, index) {
-                    final order = controller.orders[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.md, vertical: AppDimensions.xs),
-                      child: ListTile(
-                        leading: CircleAvatar(backgroundColor: _statusColor(order.status).withValues(alpha: 0.1), child: Icon(Icons.receipt_outlined, color: _statusColor(order.status))),
-                        title: Text('Order #${order.id}'),
-                        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          if (order.customerName != null) Text(order.customerName!),
-                          const SizedBox(height: 4),
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: _statusColor(order.status).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                            child: Text(order.status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _statusColor(order.status)))),
-                        ]),
-                        trailing: Text('\$${order.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        onTap: () => Get.toNamed('/orders/${order.id}', arguments: order.id),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }),
-          ),
-        ],
+        ),
+        body: Obx(() {
+          if (controller.isLoading.value) return const AppLoading(message: 'Loading orders...');
+          if (controller.errorMessage.value.isNotEmpty) {
+            return AppError(message: controller.errorMessage.value, onRetry: controller.fetchOrders);
+          }
+
+          final activeOrders = controller.orders.where((o) => o.status.toLowerCase() != 'completed' && o.status.toLowerCase() != 'cancelled').toList();
+          final historyOrders = controller.orders.where((o) => o.status.toLowerCase() == 'completed' || o.status.toLowerCase() == 'cancelled').toList();
+
+          return RefreshIndicator(
+            onRefresh: controller.refreshOrders,
+            child: TabBarView(
+              children: [
+                _buildOrderList(activeOrders, isActive: true),
+                _buildOrderList(historyOrders, isActive: false),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
 
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending': return AppColors.warning;
-      case 'processing': return AppColors.info;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default: return AppColors.textSecondaryLight;
+  Widget _buildOrderList(List<Order> orders, {required bool isActive}) {
+    if (orders.isEmpty) {
+      return const AppEmpty(message: 'No orders found', icon: Icons.receipt_long_outlined);
     }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppDimensions.md),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        // Safely get the first item or use placeholders
+        final item = (order.items != null && order.items!.isNotEmpty) ? order.items!.first : null;
+        final itemName = item?.productName ?? 'Product Item';
+        final itemQty = item?.quantity ?? 1;
+        final price = order.totalAmount;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: AppDimensions.md),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+          elevation: 2,
+          shadowColor: Colors.black12,
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.md),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image CenterLeft
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                        image: const DecorationImage(
+                          image: NetworkImage('https://via.placeholder.com/150'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Item Name and Status
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  itemName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isActive ? Colors.orange.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isActive ? 'Progressing' : 'Completed',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive ? Colors.orange : Colors.green,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Color, Qty, Price
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text('Color : Red', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Qty : $itemQty', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                ],
+                              ),
+                              const Spacer(),
+                              Text(
+                                '\$${price.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.md),
+                const Divider(height: 1),
+                const SizedBox(height: AppDimensions.md),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.toNamed('/orders/${order.id}', arguments: order.id),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+                        ),
+                        child: const Text('Detail'),
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.md),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+                        ),
+                        child: Text(isActive ? 'Tracking' : 'Received Order'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

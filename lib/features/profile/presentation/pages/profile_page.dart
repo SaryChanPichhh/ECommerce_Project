@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../../app/controllers/theme_controller.dart';
 import '../controllers/profile_controller.dart';
 
 class ProfilePage extends GetView<ProfileController> {
@@ -13,6 +14,8 @@ class ProfilePage extends GetView<ProfileController> {
 
   @override
   Widget build(BuildContext context) {
+    final themeCtrl = Get.find<ThemeController>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('setting'.tr, style: AppTextStyles.h2),
@@ -20,11 +23,12 @@ class ProfilePage extends GetView<ProfileController> {
       ),
       body: Obx(() {
         if (controller.isLoading.value) return const AppLoading();
-        if (controller.errorMessage.value.isNotEmpty)
+        if (controller.errorMessage.value.isNotEmpty) {
           return AppError(
             message: controller.errorMessage.value,
             onRetry: controller.loadProfile,
           );
+        }
         final user = controller.user.value;
 
         return ListView(
@@ -68,7 +72,7 @@ class ProfilePage extends GetView<ProfileController> {
                         )
                       else if (user?.email != null)
                         Text(
-                          user!.email!,
+                          user?.email ?? '',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.textSecondaryLight,
                           ),
@@ -89,6 +93,16 @@ class ProfilePage extends GetView<ProfileController> {
             _buildTile(Icons.notifications_outlined, 'notification'.tr, () => Get.toNamed('/profile/notification')),
             _buildTile(Icons.security_outlined, 'security'.tr, () {}),
             _buildTile(Icons.language_outlined, 'language'.tr, () => Get.toNamed('/profile/language')),
+
+            // Dark Mode toggle — below Language
+            Obx(() => _buildSwitchTile(
+              icon: themeCtrl.isDark.value
+                  ? Icons.dark_mode_outlined
+                  : Icons.light_mode_outlined,
+              title: 'dark_mode'.tr,
+              value: themeCtrl.isDark.value,
+              onChanged: (_) => themeCtrl.toggleTheme(),
+            )),
 
             const SizedBox(height: AppDimensions.lg),
 
@@ -122,6 +136,26 @@ class ProfilePage extends GetView<ProfileController> {
       title: Text(title, style: AppTextStyles.bodyLarge.copyWith(color: color)),
       trailing: Icon(Icons.arrow_forward_ios, size: 16, color: color),
       onTap: onTap,
+    );
+  }
+
+  /// A ListTile variant with a [Switch] trailing instead of an arrow.
+  Widget _buildSwitchTile({
+    required IconData icon,
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: AppColors.primary),
+      title: Text(title, style: AppTextStyles.bodyLarge),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: AppColors.primary,
+      ),
+      onTap: () => onChanged(!value),
     );
   }
 }

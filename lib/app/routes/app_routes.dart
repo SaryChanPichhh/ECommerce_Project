@@ -4,6 +4,9 @@ abstract class AppRoutes {
   static const String login = '/login';
   static const String main = '/main';
   static const String home = '/home';
+  static const String cart = '/cart';
+  static const String payment = '/payment';
+  static const String editAddress = '/edit-address';
   static const String products = '/products';
   static const String productDetail = '/products/:id';
   static const String productCreate = '/products/create';

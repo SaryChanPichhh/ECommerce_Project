@@ -14,6 +14,7 @@ const Map<String, String> kmKH = {
   'notification': 'សេចក្តីជូនដំណឹង',
   'security': 'សុវត្ថិភាព',
   'language': 'ភាសា',
+  'dark_mode': 'របៀបងងឹត',
   'legal_and_policies': 'ច្បាប់ និងគោលការណ៍',
   'help_and_support': 'ជំនួយ និងការគាំទ្រ',
   'logout': 'ចាកចេញ',
