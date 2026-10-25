@@ -7,7 +7,7 @@ class GetProductsUseCase {
   GetProductsUseCase({required ProductRepository repository})
       : _repository = repository;
 
-  Future<List<Product>> call({int? page, int? limit, String? search}) {
-    return _repository.getProducts(page: page, limit: limit, search: search);
+  Future<List<Product>> call({int? page, int? limit, String? search, String? category}) {
+    return _repository.getProducts(page: page, limit: limit, search: search, category: category);
   }
 }

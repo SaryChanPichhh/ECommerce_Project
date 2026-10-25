@@ -1,8 +1,6 @@
 import 'package:dio/dio.dart';
 import '../constants/api_constants.dart';
 import '../errors/exceptions.dart';
-import 'interceptors/auth_interceptor.dart';
-import 'interceptors/logging_interceptor.dart';
 
 /// Centralized API client using Dio.
 /// All HTTP requests should go through this single client.
@@ -149,12 +147,88 @@ class ApiClient {
   AppException _handleResponseError(Response? response) {
     final statusCode = response?.statusCode;
     final data = response?.data;
-    final message = data is Map<String, dynamic>
-        ? (data['message'] as String?) ?? 'Server error'
-        : 'Server error';
+
+    String message = 'Server error occurred';
+    Map<String, List<String>>? validationErrors;
+
+    if (data is Map<String, dynamic>) {
+      // Check for standard error envelope: errors: [...]
+      if (data['errors'] is List && (data['errors'] as List).isNotEmpty) {
+        final errorList = data['errors'] as List;
+        final messages = <String>[];
+        final fieldErrors = <String, List<String>>{};
+
+        for (final item in errorList) {
+          if (item is Map) {
+            final msg = item['message']?.toString() ?? item['code']?.toString() ?? '';
+            final field = item['field']?.toString();
+            if (msg.isNotEmpty) {
+              messages.add(msg);
+              if (field != null && field.isNotEmpty) {
+                fieldErrors.putIfAbsent(field, () => []).add(msg);
+              }
+            }
+          } else if (item is String && item.isNotEmpty) {
+            messages.add(item);
+          }
+        }
+        if (messages.isNotEmpty) {
+          message = messages.join('. ');
+        }
+        if (fieldErrors.isNotEmpty) {
+          validationErrors = fieldErrors;
+        }
+      } else if (data['errors'] is Map) {
+        validationErrors = (data['errors'] as Map<String, dynamic>).map(
+          (key, value) => MapEntry(
+            key,
+            value is List
+                ? value.map((e) => e.toString()).toList()
+                : [value.toString()],
+          ),
+        );
+        message = validationErrors.values.expand((e) => e).join('. ');
+      } else if (data['error'] is Map<String, dynamic>) {
+        final errMap = data['error'] as Map<String, dynamic>;
+        if (errMap['bodyRequestError'] is Map) {
+          final bodyErr = errMap['bodyRequestError'] as Map;
+          validationErrors = bodyErr.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              value is List
+                  ? value.map((e) => e.toString()).toList()
+                  : [value.toString()],
+            ),
+          );
+          message = validationErrors.entries
+              .map((e) => '${e.key}: ${e.value.join(", ")}')
+              .join('. ');
+        } else if (errMap['message'] is String &&
+            (errMap['message'] as String).isNotEmpty) {
+          message = errMap['message'] as String;
+        } else if (data['message'] is String &&
+            (data['message'] as String).isNotEmpty) {
+          message = data['message'] as String;
+        }
+      } else if (data['message'] is String && (data['message'] as String).isNotEmpty) {
+        message = data['message'] as String;
+      } else if (data['detail'] is String && (data['detail'] as String).isNotEmpty) {
+        message = data['detail'] as String;
+      } else if (data['error'] is String && (data['error'] as String).isNotEmpty) {
+        message = data['error'] as String;
+      }
+    } else if (data is String && data.isNotEmpty) {
+      message = data;
+    }
 
     switch (statusCode) {
       case 400:
+        if (validationErrors != null && validationErrors.isNotEmpty) {
+          return ValidationException(
+            message: message,
+            errors: validationErrors,
+          );
+        }
         return ServerException(
           message: message,
           statusCode: statusCode,
@@ -163,33 +237,28 @@ class ApiClient {
       case 401:
         return UnauthorizedException(message: message);
       case 403:
-        return const UnauthorizedException(
-          message: 'Access forbidden',
+        return UnauthorizedException(
+          message: message.isNotEmpty ? message : 'Access forbidden',
         );
       case 404:
         return NotFoundException(message: message);
-      case 422:
-        final errors = data is Map<String, dynamic> && data['errors'] != null
-            ? (data['errors'] as Map<String, dynamic>).map(
-                (key, value) => MapEntry(
-                  key,
-                  (value as List).map((e) => e.toString()).toList(),
-                ),
-              )
-            : null;
-        return ValidationException(
-          message: message,
-          errors: errors,
-        );
-      case 500:
+      case 409:
         return ServerException(
           message: message,
           statusCode: statusCode,
+          data: data,
         );
+      case 422:
+        return ValidationException(
+          message: message,
+          errors: validationErrors,
+        );
+      case 500:
       default:
         return ServerException(
           message: message,
           statusCode: statusCode,
+          data: data,
         );
     }
   }

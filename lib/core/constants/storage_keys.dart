@@ -11,4 +11,5 @@ class StorageKeys {
   static const String isFirstLaunch = 'is_first_launch';
   static const String selectedBranch = 'selected_branch';
   static const String selectedWarehouse = 'selected_warehouse';
+  static const String searchHistory = 'search_history';
 }

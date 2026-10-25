@@ -17,7 +17,7 @@ class OrderListPage extends GetView<OrderController> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('My Orders'),
+          title: Text('my_orders'.tr),
           bottom: const TabBar(
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
@@ -34,8 +34,10 @@ class OrderListPage extends GetView<OrderController> {
             return AppError(message: controller.errorMessage.value, onRetry: controller.fetchOrders);
           }
 
-          final activeOrders = controller.orders.where((o) => o.status.toLowerCase() != 'completed' && o.status.toLowerCase() != 'cancelled').toList();
-          final historyOrders = controller.orders.where((o) => o.status.toLowerCase() == 'completed' || o.status.toLowerCase() == 'cancelled').toList();
+          final activeOrders =
+              controller.orders.where((o) => o.isActive).toList();
+          final historyOrders =
+              controller.orders.where((o) => o.isTerminal).toList();
 
           return RefreshIndicator(
             onRefresh: controller.refreshOrders,
@@ -51,9 +53,54 @@ class OrderListPage extends GetView<OrderController> {
     );
   }
 
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case OrderStatus.pending:
+        return Colors.orange;
+      case OrderStatus.confirmed:
+      case OrderStatus.processing:
+      case OrderStatus.shipped:
+        return Colors.blue;
+      case OrderStatus.delivered:
+      case OrderStatus.completed:
+        return Colors.green;
+      case OrderStatus.cancelled:
+      case OrderStatus.failed:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.confirmed:
+        return 'Confirmed';
+      case OrderStatus.processing:
+        return 'Processing';
+      case OrderStatus.shipped:
+        return 'Shipped';
+      case OrderStatus.delivered:
+        return 'Delivered';
+      case OrderStatus.completed:
+        return 'Completed';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+      case OrderStatus.failed:
+        return 'Failed';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
   Widget _buildOrderList(List<Order> orders, {required bool isActive}) {
     if (orders.isEmpty) {
-      return const AppEmpty(message: 'No orders found', icon: Icons.receipt_long_outlined);
+      return const AppEmpty(
+        message: 'No orders found',
+        icon: Icons.receipt_long_outlined,
+      );
     }
 
     return ListView.builder(
@@ -61,15 +108,27 @@ class OrderListPage extends GetView<OrderController> {
       itemCount: orders.length,
       itemBuilder: (context, index) {
         final order = orders[index];
-        // Safely get the first item or use placeholders
-        final item = (order.items != null && order.items!.isNotEmpty) ? order.items!.first : null;
-        final itemName = item?.productName ?? 'Product Item';
-        final itemQty = item?.quantity ?? 1;
+        final item = (order.items != null && order.items!.isNotEmpty)
+            ? order.items!.first
+            : null;
+        final titleText = item?.productName ??
+            order.storeName ??
+            order.customerName ??
+            order.orderNumber ??
+            'Order #${order.id}';
+        final subtitleOrderNo = order.orderNumber ?? order.id;
+        final itemQty =
+            item?.quantity ?? order.itemCount ?? order.items?.length ?? 1;
         final price = order.totalAmount;
-        
+        final statusColor = _statusColor(order.status);
+        final statusLabel = _statusLabel(order.status);
+        final imageUrl = item?.productImageUrl;
+
         return Card(
           margin: const EdgeInsets.only(bottom: AppDimensions.md),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+          ),
           elevation: 2,
           shadowColor: Colors.black12,
           child: Padding(
@@ -79,80 +138,104 @@ class OrderListPage extends GetView<OrderController> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image CenterLeft
+                    // Product / Order Thumbnail
                     Container(
                       width: 70,
                       height: 70,
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                        image: const DecorationImage(
-                          image: NetworkImage('https://via.placeholder.com/150'),
-                          fit: BoxFit.cover,
-                        ),
+                        borderRadius:
+                            BorderRadius.circular(AppDimensions.radiusMd),
                       ),
+                      clipBehavior: Clip.antiAlias,
+                      child: (imageUrl != null && imageUrl.isNotEmpty)
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.shopping_bag_outlined,
+                                color: Colors.grey,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: Colors.grey,
+                              size: 32,
+                            ),
                     ),
                     const SizedBox(width: AppDimensions.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Item Name and Status
+                          // Title and Status Badge
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
                                 child: Text(
-                                  itemName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  titleText,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isActive ? Colors.orange.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
+                                  color: statusColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  isActive ? 'Progressing' : 'Completed',
+                                  statusLabel,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: isActive ? Colors.orange : Colors.green,
+                                    color: statusColor,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          // Color, Qty, Price
+                          const SizedBox(height: 6),
+                          // Order number / Variant, Qty, Price
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Text('Color : Red', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                                      const SizedBox(width: 4),
-                                      Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item?.variantName != null &&
+                                              item!.variantName!.isNotEmpty
+                                          ? 'Variant: ${item.variantName}'
+                                          : 'Order: $subtitleOrderNo',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text('Qty : $itemQty', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                ],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Items / Qty : $itemQty',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const Spacer(),
                               Text(
                                 '\$${price.toStringAsFixed(2)}',
                                 style: const TextStyle(
@@ -176,24 +259,46 @@ class OrderListPage extends GetView<OrderController> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Get.toNamed('/orders/${order.id}', arguments: order.id),
+                        onPressed: () => Get.toNamed(
+                          '/orders/${order.id}',
+                          arguments: order.id,
+                        ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
                         ),
-                        child: const Text('Detail'),
+                        child: Text('detail'.tr),
                       ),
                     ),
                     const SizedBox(width: AppDimensions.md),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () async {
+                          if (order.canPay) {
+                            await controller.completeOrderPayment(order.id);
+                          } else {
+                            Get.toNamed(
+                              '/orders/${order.id}',
+                              arguments: order.id,
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimensions.radiusLg)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
                         ),
-                        child: Text(isActive ? 'Tracking' : 'Received Order'),
+                        child: Text(
+                          order.canPay
+                              ? 'Pay Now'
+                              : (isActive ? 'Tracking' : 'Order Summary'),
+                        ),
                       ),
                     ),
                   ],

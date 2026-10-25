@@ -7,6 +7,8 @@ import '../../../../core/widgets/app_empty.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../cart/presentation/bindings/cart_binding.dart';
+import '../../../cart/presentation/controllers/cart_controller.dart';
 import '../../domain/entities/favorite.dart';
 import '../controllers/favorite_controller.dart';
 
@@ -161,101 +163,174 @@ class FavoritePage extends GetView<FavoriteController> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image + Favorite Badge
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppDimensions.radiusLg),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Get.toNamed('/products/${favorite.id}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image + Favorite Badge
+              Expanded(
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppDimensions.radiusLg),
+                        ),
+                      ),
+                      width: double.infinity,
+                      child: favorite.imageUrl != null
+                          ? ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(AppDimensions.radiusLg),
+                              ),
+                              child: Image.network(
+                                favorite.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, error, stackTrace) =>
+                                    const Center(
+                                      child: Icon(
+                                        Icons.image_outlined,
+                                        size: 48,
+                                        color: AppColors.textSecondaryLight,
+                                      ),
+                                    ),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 48,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                            ),
                     ),
-                  ),
-                  width: double.infinity,
-                  child: favorite.imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(AppDimensions.radiusLg),
+                    Positioned(
+                      top: AppDimensions.sm,
+                      right: AppDimensions.sm,
+                      child: Material(
+                        color: Colors.transparent,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => controller.toggleFavorite(
+                            productId: favorite.id,
+                            name: favorite.name,
+                            price: favorite.price,
+                            imageUrl: favorite.imageUrl,
+                            category: favorite.category,
+                            defaultIsFavorite: true,
                           ),
-                          child: Image.network(
-                            favorite.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, error, stackTrace) =>
-                                const Center(
-                                  child: Icon(
-                                    Icons.image_outlined,
-                                    size: 48,
-                                    color: AppColors.textSecondaryLight,
-                                  ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor.withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
-                          ),
-                        )
-                      : const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 48,
-                            color: AppColors.textSecondaryLight,
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(AppDimensions.xs),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: AppColors.error,
+                              size: AppDimensions.iconSm,
+                            ),
                           ),
                         ),
-                ),
-                Positioned(
-                  top: AppDimensions.sm,
-                  right: AppDimensions.sm,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                      ),
                     ),
-                    padding: const EdgeInsets.all(AppDimensions.xs),
-                    child: const Icon(
-                      Icons.favorite,
-                      color: AppColors.error,
-                      size: AppDimensions.iconSm,
+                  ],
+                ),
+              ),
+              // Details
+              Padding(
+                padding: const EdgeInsets.all(AppDimensions.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      favorite.name,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      favorite.category ?? 'Unknown',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppDimensions.xs),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '\$${favorite.price.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () {
+                              if (!Get.isRegistered<CartController>()) {
+                                CartBinding().dependencies();
+                              }
+                              Get.find<CartController>().addToCart(
+                                productId: favorite.id,
+                                quantity: 1,
+                                productName: favorite.name,
+                                unitPrice: favorite.price,
+                                productImageUrl: favorite.imageUrl,
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.add_shopping_cart_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(AppDimensions.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  favorite.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  favorite.category ?? 'Unknown',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondaryLight,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppDimensions.xs),
-                Text(
-                  '\$${favorite.price.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

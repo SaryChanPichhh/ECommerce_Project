@@ -30,6 +30,13 @@ class LocalStorage {
     await _storage.remove(StorageKeys.refreshToken);
   }
 
+  /// Clear all authentication tokens and user information.
+  Future<void> clearAuthData() async {
+    await clearTokens();
+    await _storage.remove(StorageKeys.userId);
+    await _storage.remove(StorageKeys.userData);
+  }
+
   // --- User Data ---
 
   /// Get the stored user ID.
@@ -89,6 +96,15 @@ class LocalStorage {
   /// Save the selected warehouse.
   Future<void> saveSelectedWarehouse(String warehouse) =>
       _storage.write(StorageKeys.selectedWarehouse, warehouse);
+
+  // --- Search History ---
+  List<String> getSearchHistory() {
+    final history = _storage.read<List<dynamic>>(StorageKeys.searchHistory);
+    return history?.map((e) => e.toString()).toList() ?? [];
+  }
+
+  Future<void> saveSearchHistory(List<String> history) =>
+      _storage.write(StorageKeys.searchHistory, history);
 
   // --- General ---
 

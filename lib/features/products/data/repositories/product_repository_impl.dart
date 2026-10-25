@@ -1,6 +1,7 @@
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_variant.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../datasources/product_remote_datasource.dart';
 import '../models/product_model.dart';
@@ -12,12 +13,13 @@ class ProductRepositoryImpl implements ProductRepository {
       : _remoteDataSource = remoteDataSource;
 
   @override
-  Future<List<Product>> getProducts({int? page, int? limit, String? search}) async {
+  Future<List<Product>> getProducts({int? page, int? limit, String? search, String? category}) async {
     try {
       return await _remoteDataSource.getProducts(
         page: page,
         limit: limit,
         search: search,
+        category: category,
       );
     } on NetworkException {
       throw const NetworkFailure();
@@ -38,6 +40,22 @@ class ProductRepositoryImpl implements ProductRepository {
       throw const NotFoundFailure(message: 'Product not found');
     } on NetworkException {
       throw const NetworkFailure();
+    } on AppException catch (e) {
+      throw ServerFailure(message: e.message);
+    } catch (e) {
+      throw UnknownFailure(message: e.toString());
+    }
+  }
+
+  @override
+  Future<List<ProductVariant>> getProductVariants(String productId) async {
+    try {
+      final list = await _remoteDataSource.getProductVariants(productId);
+      return List<ProductVariant>.from(list);
+    } on NetworkException {
+      throw const NetworkFailure();
+    } on UnauthorizedException {
+      throw const UnauthorizedFailure();
     } on AppException catch (e) {
       throw ServerFailure(message: e.message);
     } catch (e) {

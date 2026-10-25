@@ -1,28 +1,92 @@
+import 'product_variant.dart';
+
 /// Product entity — pure Dart, no framework dependencies.
 class Product {
   final String id;
   final String name;
+  final String? slug;
   final String? description;
   final double price;
+  final double? compareAtPrice;
   final int quantity;
   final String? category;
+  final String? categoryId;
+  final String? storeId;
   final String? imageUrl;
   final bool isActive;
+  final bool isFavorite;
+  final double ratingAverage;
+  final int ratingCount;
+  final int soldCount;
+  final List<ProductVariant> variants;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   const Product({
     required this.id,
     required this.name,
+    this.slug,
     this.description,
     required this.price,
+    this.compareAtPrice,
     this.quantity = 0,
     this.category,
+    this.categoryId,
+    this.storeId,
     this.imageUrl,
     this.isActive = true,
+    this.isFavorite = false,
+    this.ratingAverage = 0.0,
+    this.ratingCount = 0,
+    this.soldCount = 0,
+    this.variants = const [],
     this.createdAt,
     this.updatedAt,
   });
+
+  Product copyWith({
+    String? id,
+    String? name,
+    String? slug,
+    String? description,
+    double? price,
+    double? compareAtPrice,
+    int? quantity,
+    String? category,
+    String? categoryId,
+    String? storeId,
+    String? imageUrl,
+    bool? isActive,
+    bool? isFavorite,
+    double? ratingAverage,
+    int? ratingCount,
+    int? soldCount,
+    List<ProductVariant>? variants,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      slug: slug ?? this.slug,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      compareAtPrice: compareAtPrice ?? this.compareAtPrice,
+      quantity: quantity ?? this.quantity,
+      category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
+      storeId: storeId ?? this.storeId,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isActive: isActive ?? this.isActive,
+      isFavorite: isFavorite ?? this.isFavorite,
+      ratingAverage: ratingAverage ?? this.ratingAverage,
+      ratingCount: ratingCount ?? this.ratingCount,
+      soldCount: soldCount ?? this.soldCount,
+      variants: variants ?? this.variants,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>

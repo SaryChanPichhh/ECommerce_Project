@@ -16,23 +16,47 @@ class FavoriteModel extends Favorite {
   });
 
   factory FavoriteModel.fromJson(Map<String, dynamic> json) {
+    // If favorite item wraps the product under 'product' key
+    final Map<String, dynamic> pMap =
+        json['product'] is Map<String, dynamic> ? json['product'] as Map<String, dynamic> : json;
+
+    double parsedPrice = 0.0;
+    final rawPrice = pMap['base_price'] ?? pMap['price'] ?? json['price'];
+    if (rawPrice is num) {
+      parsedPrice = rawPrice.toDouble();
+    } else if (rawPrice is String) {
+      parsedPrice = double.tryParse(rawPrice) ?? 0.0;
+    }
+
+    String? categoryName;
+    if (pMap['category'] is Map) {
+      categoryName = pMap['category']['name']?.toString();
+    } else if (pMap['category'] != null) {
+      categoryName = pMap['category'].toString();
+    }
+
+    final imageUrl = pMap['primary_image_url'] as String? ??
+        pMap['image_url'] as String? ??
+        pMap['image'] as String? ??
+        json['image_url'] as String?;
+
     return FavoriteModel(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] as String? ?? '',
-      description: json['description'] as String?,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      quantity: json['quantity'] as int? ?? 0,
-      category: json['category'] as String?,
-      imageUrl: json['image_url'] as String? ?? json['image'] as String?,
-      isActive: json['is_active'] as bool? ?? true,
+      id: (pMap['id'] ?? json['product_id'] ?? json['id'])?.toString() ?? '',
+      name: (pMap['name'] ?? json['name']) as String? ?? '',
+      description: (pMap['description'] ?? json['description']) as String?,
+      price: parsedPrice,
+      quantity: (pMap['quantity'] ?? json['quantity']) as int? ?? 0,
+      category: categoryName,
+      imageUrl: imageUrl,
+      isActive: pMap['status'] == 'active' || (pMap['is_active'] as bool? ?? true),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
-      favoritedAt: json['favorited_at'] != null
-          ? DateTime.tryParse(json['favorited_at'] as String)
+      favoritedAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
     );
   }

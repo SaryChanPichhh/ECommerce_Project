@@ -2,14 +2,37 @@ import 'package:get/get.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/interceptors/auth_interceptor.dart';
 import '../../core/network/interceptors/logging_interceptor.dart';
+import '../../core/network/user_session.dart';
 import '../../core/storage/local_storage.dart';
+import '../../core/services/cloudflare_r2_service.dart';
+import '../../features/auth/data/models/user_model.dart';
+import '../../features/auth/domain/entities/user.dart';
+import '../../features/cart/presentation/bindings/cart_binding.dart';
+import '../../features/favorite/presentation/bindings/favorite_binding.dart';
 import '../controllers/theme_controller.dart';
 
 /// Initial binding that sets up global dependencies.
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
-    Get.put(LocalStorage(), permanent: true);
+    final localStorage = LocalStorage();
+    Get.put(localStorage, permanent: true);
+
+    // Initialize UserSession singleton from persisted storage
+    final token = localStorage.getAccessToken();
+    final refreshToken = localStorage.getRefreshToken();
+    final userData = localStorage.getUserData();
+    User? user;
+    if (userData != null) {
+      try {
+        user = UserModel.fromJson(userData);
+      } catch (_) {}
+    }
+    UserSession.instance.init(
+      token: token,
+      refreshToken: refreshToken,
+      user: user,
+    );
 
     final apiClient = ApiClient();
     apiClient.addInterceptors([
@@ -18,10 +41,17 @@ class InitialBinding extends Bindings {
     ]);
     Get.put(apiClient, permanent: true);
 
+    // Cloudflare R2 storage service for uploading images (avatars, products, etc.)
+    Get.put(CloudflareR2Service(), permanent: true);
+
     // Global theme controller — persists dark/light mode preference.
     Get.put(
       ThemeController(storage: Get.find<LocalStorage>()),
       permanent: true,
     );
+
+    // Global Cart and Favorite dependencies (configured with fenix: true to survive route transitions)
+    CartBinding().dependencies();
+    FavoriteBinding().dependencies();
   }
 }
