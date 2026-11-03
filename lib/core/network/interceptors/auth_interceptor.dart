@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:get/get.dart';
+import '../../../app/routes/app_routes.dart';
 import '../../constants/api_constants.dart';
 import '../../storage/local_storage.dart';
 import '../user_session.dart';
@@ -43,6 +45,14 @@ class AuthInterceptor extends Interceptor {
     }
 
     final path = options.path;
+
+    // Admin and customer routes ALWAYS require Bearer token
+    if (path.contains('/admin/') ||
+        path.startsWith('admin/') ||
+        path.contains('/customer/') ||
+        path.startsWith('customer/')) {
+      return false;
+    }
 
     // 2. Strict public auth entrypoints (login, register, forgot-pw, reset-pw)
     for (final route in _noTokenRoutes) {
@@ -90,6 +100,12 @@ class AuthInterceptor extends Interceptor {
       // Invalidate in-memory singleton session and persisted storage
       UserSession.instance.clear();
       _localStorage.clearAuthData();
+
+      // If token is rejected / expired, redirect to login page
+      final currentRoute = Get.currentRoute;
+      if (currentRoute != AppRoutes.login && currentRoute != AppRoutes.signup) {
+        Get.offAllNamed(AppRoutes.login);
+      }
     }
     super.onError(err, handler);
   }

@@ -16,7 +16,7 @@ void main() async {
       enabled: !kReleaseMode,
       tools: const [...DevicePreview.defaultTools],
       builder: (context) {
-        return App();
+        return const App();
       },
     ),
   );

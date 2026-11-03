@@ -33,9 +33,12 @@ class Order {
   final String? orderNumber;
   final String? customerId;
   final String? customerName;
+  final String? customerPhone;
+  final String? customerEmail;
   final String? storeId;
   final String? storeName;
   final String? shippingAddressId;
+  final String? shippingAddressText;
   final double subtotalAmount;
   final double shippingAmount;
   final double discountAmount;
@@ -58,9 +61,12 @@ class Order {
     this.orderNumber,
     this.customerId,
     this.customerName,
+    this.customerPhone,
+    this.customerEmail,
     this.storeId,
     this.storeName,
     this.shippingAddressId,
+    this.shippingAddressText,
     this.subtotalAmount = 0.0,
     this.shippingAmount = 0.0,
     this.discountAmount = 0.0,
@@ -213,6 +219,10 @@ class OrderShipment {
   final String? carrierName;
   final String? trackingNumber;
   final String status;
+  final String? note;
+  final String? confirmedBy;
+  final String? deliveryNote;
+  final DateTime? createdAt;
   final DateTime? shippedAt;
   final DateTime? deliveredAt;
   final List<ShipmentEvent> events;
@@ -223,6 +233,10 @@ class OrderShipment {
     this.carrierName,
     this.trackingNumber,
     this.status = ShipmentStatus.pending,
+    this.note,
+    this.confirmedBy,
+    this.deliveryNote,
+    this.createdAt,
     this.shippedAt,
     this.deliveredAt,
     this.events = const [],

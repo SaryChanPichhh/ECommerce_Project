@@ -46,7 +46,7 @@ class AppTheme {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             minimumSize: const Size(
-              double.infinity,
+              88,
               AppDimensions.buttonHeight,
             ),
             backgroundColor: AppColors.primary,
@@ -60,7 +60,7 @@ class AppTheme {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(
-              double.infinity,
+              88,
               AppDimensions.buttonHeight,
             ),
             foregroundColor: AppColors.primary,
@@ -116,6 +116,24 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
+        listTileTheme: const ListTileThemeData(
+          iconColor: AppColors.primary,
+          textColor: AppColors.textPrimaryLight,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primary;
+            }
+            return Colors.grey.shade400;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primary.withValues(alpha: 0.3);
+            }
+            return Colors.grey.shade300;
+          }),
+        ),
       );
 
   /// Dark theme.
@@ -156,7 +174,7 @@ class AppTheme {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             minimumSize: const Size(
-              double.infinity,
+              88,
               AppDimensions.buttonHeight,
             ),
             backgroundColor: AppColors.primaryLight,
@@ -170,7 +188,7 @@ class AppTheme {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(
-              double.infinity,
+              88,
               AppDimensions.buttonHeight,
             ),
             foregroundColor: AppColors.primaryLight,
@@ -225,6 +243,24 @@ class AppTheme {
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: AppColors.primaryLight,
           foregroundColor: Colors.black,
+        ),
+        listTileTheme: const ListTileThemeData(
+          iconColor: AppColors.primaryLight,
+          textColor: AppColors.textPrimaryDark,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primaryLight;
+            }
+            return Colors.grey.shade500;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primaryLight.withValues(alpha: 0.3);
+            }
+            return AppColors.borderDark;
+          }),
         ),
       );
 }

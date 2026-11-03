@@ -37,7 +37,9 @@ class ApiConstants {
   static const String userSecuritySettings = '/users/me/security-settings/';
   static const String userSessions = '/users/me/sessions/';
   static String userSessionRevoke(String sessionId) =>
-      '/users/me/sessions/$sessionId/';
+      '/users/me/sessions/${_cleanId(sessionId)}/';
+  static String userSessionRevokeAlias(String sessionId) =>
+      '/users/me/sessions/${_cleanId(sessionId)}/revoke/';
   static const String userReviews = '/users/me/reviews/';
   static const String userLegalAcceptances = '/users/me/legal-acceptances/';
 
@@ -182,12 +184,20 @@ class ApiConstants {
       '/admin/orders/${_cleanId(orderId)}/status/';
   static String adminOrderProcessing(String orderId) =>
       '/admin/orders/${_cleanId(orderId)}/processing';
+  static String adminOrderProcessingSlash(String orderId) =>
+      '/admin/orders/${_cleanId(orderId)}/processing/';
   static String adminOrderShipments(String orderId) =>
       '/admin/orders/${_cleanId(orderId)}/shipments';
+  static String adminOrderShipmentsSlash(String orderId) =>
+      '/admin/orders/${_cleanId(orderId)}/shipments/';
   static String adminOrderCancel(String orderId) =>
       '/admin/orders/${_cleanId(orderId)}/cancel';
+  static String adminOrderCancelSlash(String orderId) =>
+      '/admin/orders/${_cleanId(orderId)}/cancel/';
   static String adminOrderFailed(String orderId) =>
       '/admin/orders/${_cleanId(orderId)}/failed';
+  static String adminOrderFailedSlash(String orderId) =>
+      '/admin/orders/${_cleanId(orderId)}/failed/';
 
   // ──────────────────────────────────────────────
   // 13. Shipments & Tracking (Section 8.6 & order_process.md Steps 12-17)
@@ -211,12 +221,69 @@ class ApiConstants {
       '/admin/shipments/${_cleanId(shipmentId)}/';
   static String adminShipmentPacked(String shipmentId) =>
       '/admin/shipments/${_cleanId(shipmentId)}/packed';
+  static String adminShipmentPackedSlash(String shipmentId) =>
+      '/admin/shipments/${_cleanId(shipmentId)}/packed/';
   static String adminShipmentHandoff(String shipmentId) =>
       '/admin/shipments/${_cleanId(shipmentId)}/handoff';
+  static String adminShipmentHandoffSlash(String shipmentId) =>
+      '/admin/shipments/${_cleanId(shipmentId)}/handoff/';
   static String adminShipmentEvents(String shipmentId) =>
       '/admin/shipments/${_cleanId(shipmentId)}/events';
+  static String adminShipmentEventsSlash(String shipmentId) =>
+      '/admin/shipments/${_cleanId(shipmentId)}/events/';
   static String adminShipmentOutForDelivery(String shipmentId) =>
       '/admin/shipments/${_cleanId(shipmentId)}/out-for-delivery';
+  static String adminShipmentOutForDeliverySlash(String shipmentId) =>
+      '/admin/shipments/${_cleanId(shipmentId)}/out-for-delivery/';
+
+  // ──────────────────────────────────────────────
+  // 13B. Section 9 Admin Management Endpoints
+  // ──────────────────────────────────────────────
+  // 9.1 Admin Categories
+  static const String adminCategories = '/admin/categories/';
+  static String adminCategoryDetail(String categoryId) =>
+      '/admin/categories/${_cleanId(categoryId)}/';
+  static const String adminCategorySearch = '/admin/categories/search/';
+
+  // 9.2 Admin Stores
+  static const String adminStores = '/admin/stores/';
+  static String adminStoreDetail(String storeId) =>
+      '/admin/stores/${_cleanId(storeId)}/';
+  static const String adminStoreSearch = '/admin/stores/search/';
+
+  // 9.3 Admin Product Variants & Variant Options
+  static const String adminProductVariants = '/admin/product/variants/';
+  static String adminProductVariantDetail(String variantId) =>
+      '/admin/product/variants/${_cleanId(variantId)}/';
+  static const String adminProductVariantOptions =
+      '/admin/product/variant-options/';
+  static String adminProductVariantOptionDetail(String optionId) =>
+      '/admin/product/variant-options/${_cleanId(optionId)}/';
+
+  // 9.4 Admin Tags
+  static const String adminTags = '/admin/tags/';
+  static String adminTagDetail(String tagId) =>
+      '/admin/tags/${_cleanId(tagId)}/';
+
+  // 9.7 Admin Reviews Moderation
+  static const String adminReviews = '/admin/reviews/';
+  static String adminReviewDetail(String reviewId) =>
+      '/admin/reviews/${_cleanId(reviewId)}/';
+
+  // 9.8 Admin Notification Broadcasts
+  static const String adminNotifications = '/admin/notifications/';
+
+  // 9.9 Admin Support Ticket Resolution
+  static const String adminSupportTickets = '/admin/support/tickets/';
+  static String adminSupportTicketDetail(String ticketId) =>
+      '/admin/support/tickets/${_cleanId(ticketId)}/';
+  static String adminSupportTicketMessages(String ticketId) =>
+      '/admin/support/tickets/${_cleanId(ticketId)}/messages/';
+
+  // 9.10 Admin Legal Documents Governance
+  static const String adminLegalDocuments = '/admin/legal-documents/';
+  static String adminLegalDocumentDetail(String docId) =>
+      '/admin/legal-documents/${_cleanId(docId)}/';
 
   // ──────────────────────────────────────────────
   // 14. Favorites & Wishlist (Section 8.7)

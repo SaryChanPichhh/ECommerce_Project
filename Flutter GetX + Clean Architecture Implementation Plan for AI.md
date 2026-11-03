@@ -464,17 +464,6 @@ app/routes/
 └── app_pages.dart
 ```
 
-Example:
-
-```text
-/login
-/home
-/products
-/products/:id
-/customers
-/orders
-/profile
-```
 
 Use GetX route bindings.
 
@@ -491,73 +480,6 @@ GetPage(
 Avoid creating all controllers globally.
 
 Controllers should normally be created when the feature is entered.
-
----
-
-# 14. Phase 5 — Products Feature
-
-Implement Products as the first complete CRUD feature.
-
-Required operations:
-
-```text
-GET    /products
-GET    /products/{id}
-POST   /products
-PUT    /products/{id}
-DELETE /products/{id}
-```
-
-Structure:
-
-```text
-features/products/
-├── data/
-│   ├── datasources/
-│   │   └── product_remote_datasource.dart
-│   │
-│   ├── models/
-│   │   ├── product_model.dart
-│   │   ├── product_create_request.dart
-│   │   └── product_update_request.dart
-│   │
-│   └── repositories/
-│       └── product_repository_impl.dart
-│
-├── domain/
-│   ├── entities/
-│   │   └── product.dart
-│   │
-│   ├── repositories/
-│   │   └── product_repository.dart
-│   │
-│   └── usecases/
-│       ├── get_products.dart
-│       ├── get_product.dart
-│       ├── create_product.dart
-│       ├── update_product.dart
-│       └── delete_product.dart
-│
-└── presentation/
-    ├── bindings/
-    │   └── product_binding.dart
-    │
-    ├── controllers/
-    │   ├── product_controller.dart
-    │   └── product_form_controller.dart
-    │
-    ├── pages/
-    │   ├── product_list_page.dart
-    │   ├── product_detail_page.dart
-    │   └── product_form_page.dart
-    │
-    └── widgets/
-        ├── product_card.dart
-        ├── product_search.dart
-        └── product_form.dart
-```
-
----
 
 # 15. GetX State Management
 
@@ -615,31 +537,6 @@ Create/update product state
 ```
 
 This prevents one large controller from becoming responsible for everything.
-
----
-
-# 17. Phase 6 — Additional Features
-
-After Products, implement features using the same pattern:
-
-```text
-customers/
-orders/
-payments/
-profile/
-settings/
-notifications/
-```
-
-Each feature should be independent.
-
-Do not create a giant:
-
-```text
-AppController
-```
-
-that manages the entire application.
 
 ---
 

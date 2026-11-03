@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/api_constants.dart';
 import '../errors/exceptions.dart';
 
@@ -13,7 +14,11 @@ class ApiClient {
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(milliseconds: ApiConstants.connectTimeout),
       receiveTimeout: const Duration(milliseconds: ApiConstants.receiveTimeout),
-      sendTimeout: const Duration(milliseconds: ApiConstants.sendTimeout),
+      // On web, sendTimeout adds an upload.onprogress listener to XMLHttpRequest,
+      // which triggers CORS preflight warnings in browser console.
+      sendTimeout: kIsWeb
+          ? null
+          : const Duration(milliseconds: ApiConstants.sendTimeout),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

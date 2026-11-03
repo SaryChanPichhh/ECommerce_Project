@@ -79,9 +79,12 @@ class OrderModel extends Order {
     super.orderNumber,
     super.customerId,
     super.customerName,
+    super.customerPhone,
+    super.customerEmail,
     super.storeId,
     super.storeName,
     super.shippingAddressId,
+    super.shippingAddressText,
     super.subtotalAmount,
     super.shippingAmount,
     super.discountAmount,
@@ -119,7 +122,33 @@ class OrderModel extends Order {
       storeName = json['store_name']?.toString();
     }
 
-    final customerName = json['customer_name']?.toString() ?? storeName;
+    String? customerName = json['customer_name']?.toString();
+    String? customerPhone =
+        json['customer_phone']?.toString() ?? json['phone_number']?.toString();
+    String? customerEmail =
+        json['customer_email']?.toString() ?? json['email']?.toString();
+    if (json['customer'] is Map) {
+      final custMap = json['customer'] as Map;
+      customerName ??= custMap['name']?.toString() ??
+          '${custMap['first_name'] ?? ''} ${custMap['last_name'] ?? ''}'.trim();
+      customerPhone ??=
+          custMap['phone_number']?.toString() ?? custMap['phone']?.toString();
+      customerEmail ??= custMap['email']?.toString();
+    }
+    customerName = (customerName != null && customerName.isNotEmpty)
+        ? customerName
+        : storeName;
+
+    String? shippingAddressText = json['shipping_address_text']?.toString();
+    if (shippingAddressText == null && json['shipping_address'] is Map) {
+      final addr = json['shipping_address'] as Map;
+      shippingAddressText = [
+        addr['address_line_1'] ?? addr['street'],
+        addr['city'],
+        addr['province'] ?? addr['state'],
+        addr['country'],
+      ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
+    }
 
     final itemsList = json['items'] is List
         ? (json['items'] as List)
@@ -147,14 +176,17 @@ class OrderModel extends Order {
         : null;
 
     return OrderModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['order_id']?.toString() ?? '',
       orderNumber: json['order_number']?.toString(),
       customerId:
           json['customer_id']?.toString() ?? json['user_id']?.toString(),
       customerName: customerName,
+      customerPhone: customerPhone,
+      customerEmail: customerEmail,
       storeId: storeId,
       storeName: storeName,
       shippingAddressId: json['shipping_address_id']?.toString(),
+      shippingAddressText: shippingAddressText,
       subtotalAmount: parsedSubtotal,
       shippingAmount: parsedShipping,
       discountAmount: parsedDiscount,
@@ -338,6 +370,10 @@ class OrderShipmentModel extends OrderShipment {
     super.carrierName,
     super.trackingNumber,
     super.status,
+    super.note,
+    super.confirmedBy,
+    super.deliveryNote,
+    super.createdAt,
     super.shippedAt,
     super.deliveredAt,
     super.events,
@@ -352,11 +388,16 @@ class OrderShipmentModel extends OrderShipment {
         : <ShipmentEventModel>[];
 
     return OrderShipmentModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['shipment_id']?.toString() ?? '',
       orderId: json['order_id']?.toString(),
-      carrierName: json['carrier_name']?.toString(),
+      carrierName:
+          json['carrier_name']?.toString() ?? json['carrier']?.toString(),
       trackingNumber: json['tracking_number']?.toString(),
       status: json['status']?.toString() ?? ShipmentStatus.pending,
+      note: json['note']?.toString(),
+      confirmedBy: json['confirmed_by']?.toString(),
+      deliveryNote: json['delivery_note']?.toString(),
+      createdAt: _parseDate(json['created_at']),
       shippedAt: _parseDate(json['shipped_at']),
       deliveredAt: _parseDate(json['delivered_at']),
       events: eventsList,

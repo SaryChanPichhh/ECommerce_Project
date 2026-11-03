@@ -1,4 +1,5 @@
 import '../../features/auth/domain/entities/user.dart';
+import '../utils/jwt_utils.dart';
 
 /// Singleton class for managing user session state in memory.
 /// Stores the active [accessToken], [refreshToken], and [currentUser] info.
@@ -25,8 +26,17 @@ class UserSession {
   /// Get currently authenticated user info.
   User? get currentUser => _currentUser;
 
-  /// Check if the user is currently authenticated.
-  bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
+  /// Check if the user is currently authenticated with a valid, non-expired token.
+  bool get isAuthenticated {
+    if (_accessToken == null || _accessToken!.trim().isEmpty) {
+      return false;
+    }
+    if (JwtUtils.isExpired(_accessToken)) {
+      clear();
+      return false;
+    }
+    return true;
+  }
 
   /// Initialize or restore session (e.g. from local storage on app start).
   void init({

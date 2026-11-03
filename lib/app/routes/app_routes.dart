@@ -2,7 +2,10 @@
 abstract class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
+  static const String signup = '/signup';
   static const String main = '/main';
+  static const String adminDashboard = '/admin';
+  static const String storefront = '/storefront';
   static const String home = '/home';
   static const String cart = '/cart';
   static const String payment = '/payment';
@@ -24,4 +27,6 @@ abstract class AppRoutes {
   static const String profileLanguage = '/profile/language';
   static const String profileLegalPolicies = '/profile/legal-policies';
   static const String profileHelpSupport = '/profile/help-support';
+  static const String categoryDetail = '/category-detail';
+  static const String storeDetail = '/store-detail';
 }
