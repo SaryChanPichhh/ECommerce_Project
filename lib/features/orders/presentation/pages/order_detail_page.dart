@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../../core/errors/failures.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../../domain/usecases/get_order.dart';
@@ -48,7 +50,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     final id = _resolveOrderId();
     if (id == null) {
       setState(() {
-        errorMessage = 'Order ID not provided';
+        errorMessage = 'order_not_found'.tr;
         isLoading = false;
       });
       return;
@@ -68,7 +70,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         loadedShipments = await repo.getOrderShipments(id);
       }
 
-      // Enrich shipments with events if events were not embedded
       final enrichedShipments = <OrderShipment>[];
       for (final s in loadedShipments) {
         if (s.events.isEmpty && s.id.isNotEmpty) {
@@ -112,7 +113,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        errorMessage = 'Failed to load order';
+        errorMessage = 'order_not_found'.tr;
         isLoading = false;
       });
     }
@@ -135,10 +136,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   Future<void> _handleCancelOrder() async {
     if (order == null || isSubmittingAction) return;
     final confirmed = await Helpers.showConfirmDialog(
-      title: 'Cancel Order',
+      title: 'cancel_order'.tr,
       message: 'Are you sure you want to cancel this order?',
       confirmText: 'Yes, Cancel',
-      cancelText: 'No',
+      cancelText: 'cancel'.tr,
+      isDestructive: true,
     );
     if (!confirmed) return;
 
@@ -173,20 +175,23 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final title = order != null
-        ? (order!.orderNumber ?? 'Order #${order!.id}')
-        : 'Order Detail';
+        ? (order!.orderNumber ?? '${'order_tab'.tr} #${order!.id}')
+        : 'detail'.tr;
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: isLoading
-          ? const AppLoading()
+          ? AppLoading(message: 'loading_orders'.tr)
           : errorMessage.isNotEmpty
               ? AppError(message: errorMessage, onRetry: _loadOrder)
               : order == null
-                  ? const AppError(message: 'Order not found')
+                  ? AppError(message: 'order_not_found'.tr)
                   : RefreshIndicator(
                       onRefresh: _loadOrder,
+                      color: AppColors.primary,
                       child: ListView(
                         padding: const EdgeInsets.all(AppDimensions.md),
                         children: [
@@ -198,11 +203,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                               order!.items!.isNotEmpty) ...[
                             const SizedBox(height: AppDimensions.md),
                             Text(
-                              'Items (${order!.items!.length})',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              '${'items_label'.tr} (${order!.items!.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: AppDimensions.sm),
                             ...order!.items!.map(
@@ -210,10 +214,35 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 margin: const EdgeInsets.only(
                                   bottom: AppDimensions.sm,
                                 ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusLg,
+                                  ),
+                                  side: BorderSide(
+                                    color: theme.dividerColor.withValues(
+                                      alpha: isDark ? 0.25 : 0.45,
+                                    ),
+                                  ),
+                                ),
                                 child: ListTile(
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      AppDimensions.radiusMd,
+                                    ),
+                                    child: AppNetworkImage(
+                                      imageUrl: item.productImageUrl,
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      fallbackIcon: Icons.shopping_bag_outlined,
+                                      fallbackIconSize: 22,
+                                    ),
+                                  ),
                                   title: Text(
                                     item.productName ??
                                         'Product ${item.productId}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -222,15 +251,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                     [
                                       if (item.variantName != null &&
                                           item.variantName!.isNotEmpty)
-                                        'Variant: ${item.variantName}',
+                                        '${'variant'.tr}: ${item.variantName}',
                                       '${'qty'.tr}${item.quantity} × \$${item.unitPrice.toStringAsFixed(2)}',
                                     ].join(' • '),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   trailing: Text(
                                     '\$${item.totalPrice.toStringAsFixed(2)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
+                                      color: theme.colorScheme.primary,
                                     ),
                                   ),
                                 ),
@@ -240,11 +271,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           if (shipments.isNotEmpty) ...[
                             const SizedBox(height: AppDimensions.md),
                             Text(
-                              'Shipments & Tracking',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              'shipments_and_tracking'.tr,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: AppDimensions.sm),
                             ...shipments.map(_buildShipmentCard),
@@ -252,11 +282,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           if (statusHistory.isNotEmpty) ...[
                             const SizedBox(height: AppDimensions.md),
                             Text(
-                              'Order Status Timeline',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              'order_status_timeline'.tr,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: AppDimensions.sm),
                             _buildStatusHistoryCard(statusHistory),
@@ -268,8 +297,18 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildOrderSummaryCard(BuildContext context, Order ord) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
     final sColor = _statusColor(ord.status);
+
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        side: BorderSide(
+          color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.45),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(AppDimensions.md),
         child: Column(
@@ -280,11 +319,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               children: [
                 Expanded(
                   child: Text(
-                    ord.orderNumber ?? 'Order #${ord.id}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    ord.orderNumber ?? '${'order_tab'.tr} #${ord.id}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Chip(
@@ -293,53 +331,56 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     style: TextStyle(
                       color: sColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
-                  backgroundColor: sColor.withValues(alpha: 0.12),
+                  backgroundColor: sColor.withValues(alpha: 0.14),
+                  side: BorderSide.none,
                 ),
               ],
             ),
             if (ord.storeName != null || ord.customerName != null) ...[
               const SizedBox(height: AppDimensions.xs),
               Text(
-                'Store: ${ord.storeName ?? ord.customerName}',
-                style: const TextStyle(color: Colors.grey),
+                '${'store'.tr}: ${ord.storeName ?? ord.customerName}',
+                style: TextStyle(color: secondaryColor),
               ),
             ],
             if (ord.payment != null) ...[
               const SizedBox(height: AppDimensions.xs),
               Text(
-                'Payment: ${ord.payment!.status.toUpperCase()}',
-                style: const TextStyle(color: Colors.grey),
+                '${'payment'.tr}: ${ord.payment!.status.toUpperCase()}',
+                style: TextStyle(color: secondaryColor),
               ),
             ],
             const Divider(height: AppDimensions.lg),
-            _buildPriceRow('Subtotal', ord.subtotalAmount),
+            _buildPriceRow(context, 'subtotal'.tr, ord.subtotalAmount),
             const SizedBox(height: 4),
-            _buildPriceRow('Shipping', ord.shippingAmount),
+            _buildPriceRow(context, 'shipping'.tr, ord.shippingAmount),
             if (ord.discountAmount > 0) ...[
               const SizedBox(height: 4),
-              _buildPriceRow('Discount', -ord.discountAmount),
+              _buildPriceRow(context, 'discount'.tr, -ord.discountAmount),
             ],
             if (ord.taxAmount > 0) ...[
               const SizedBox(height: 4),
-              _buildPriceRow('Tax', ord.taxAmount),
+              _buildPriceRow(context, 'tax'.tr, ord.taxAmount),
             ],
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Text(
+                  'total'.tr,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   '\$${ord.totalAmount.toStringAsFixed(2)} ${ord.currency}',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -349,11 +390,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  Widget _buildPriceRow(String label, double amount) {
+  Widget _buildPriceRow(BuildContext context, String label, double amount) {
+    final secondaryColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.62);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(label, style: TextStyle(color: secondaryColor)),
         Text('\$${amount.toStringAsFixed(2)}'),
       ],
     );
@@ -370,8 +413,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 child: ElevatedButton.icon(
                   onPressed: isSubmittingAction ? null : _handlePayOrder,
                   icon: const Icon(Icons.payment),
-                  label: const Text('Complete Payment'),
+                  label: Text('complete_payment'.tr),
                   style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
@@ -383,13 +427,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: isSubmittingAction ? null : _handleCancelOrder,
-                  icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                  label: const Text(
-                    'Cancel Order',
-                    style: TextStyle(color: Colors.red),
+                  icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                  label: Text(
+                    'cancel_order'.tr,
+                    style: const TextStyle(color: AppColors.error),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
+                    minimumSize: const Size(0, 44),
+                    side: const BorderSide(color: AppColors.error),
                   ),
                 ),
               ),
@@ -400,6 +445,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildShipmentCard(OrderShipment shipment) {
+    final theme = Theme.of(context);
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
+
     return Card(
       margin: const EdgeInsets.only(bottom: AppDimensions.sm),
       child: Padding(
@@ -423,8 +471,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
+                    color: AppColors.info.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     shipment.status.toUpperCase(),
@@ -441,8 +489,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 shipment.trackingNumber!.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                'Tracking #: ${shipment.trackingNumber}',
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                '${'tracking_number'.tr}: ${shipment.trackingNumber}',
+                style: TextStyle(color: secondaryColor, fontSize: 13),
               ),
             ],
             if (shipment.canConfirmDelivery) ...[
@@ -454,7 +502,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       ? null
                       : () => _handleConfirmDelivery(shipment),
                   icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Confirm Receipt / Product Received'),
+                  label: Text('confirm_delivery'.tr),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
                     foregroundColor: Colors.white,
@@ -491,8 +539,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 ev.location!.isNotEmpty)
                               Text(
                                 ev.location!,
-                                style: const TextStyle(
-                                  color: Colors.grey,
+                                style: TextStyle(
+                                  color: secondaryColor,
                                   fontSize: 12,
                                 ),
                               ),
@@ -511,6 +559,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildStatusHistoryCard(List<OrderStatusHistory> history) {
+    final secondaryColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.62);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppDimensions.md),
@@ -534,7 +585,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           children: [
                             Text(
                               h.fromStatus != null
-                                  ? '${h.fromStatus!.toUpperCase()} → ${h.toStatus.toUpperCase()}'
+                                  ? '${h.fromStatus!.toUpperCase()} -> ${h.toStatus.toUpperCase()}'
                                   : h.toStatus.toUpperCase(),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -544,8 +595,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                             if (h.note != null && h.note!.isNotEmpty)
                               Text(
                                 h.note!,
-                                style: const TextStyle(
-                                  color: Colors.grey,
+                                style: TextStyle(
+                                  color: secondaryColor,
                                   fontSize: 12,
                                 ),
                               ),

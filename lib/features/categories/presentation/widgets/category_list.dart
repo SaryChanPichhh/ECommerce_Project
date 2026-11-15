@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../../../../app/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../domain/entities/category.dart';
@@ -24,28 +26,62 @@ class CategoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final controller = _getController();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Categories',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'categories'.tr,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextButton(
+              onPressed: () => Get.toNamed(AppRoutes.products),
+              child: Text('see_all'.tr),
+            ),
+          ],
         ),
-        const SizedBox(height: AppDimensions.md),
+        const SizedBox(height: AppDimensions.sm),
         SizedBox(
-          height: 85,
+          height: 96,
           child: Obx(() {
             if (controller.isLoading.value && controller.categories.isEmpty) {
-              return const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 5,
+                itemBuilder: (context, index) => Container(
+                  width: 72,
+                  margin: const EdgeInsets.only(right: AppDimensions.sm + 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 48,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
@@ -57,10 +93,10 @@ class CategoryList extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Failed to load categories',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.error,
-                          ),
+                      controller.errorMessage.value,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.error,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.refresh, size: 18),
@@ -72,8 +108,13 @@ class CategoryList extends StatelessWidget {
             }
 
             if (controller.categories.isEmpty) {
-              return const Center(
-                child: Text('No categories available'),
+              return Center(
+                child: Text(
+                  'no_products_found'.tr,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
               );
             }
 
@@ -94,8 +135,12 @@ class CategoryList extends StatelessWidget {
                         onCategorySelected!(category);
                       } else {
                         Get.toNamed(
-                          '/category-detail',
-                          arguments: category.name,
+                          AppRoutes.categoryDetail,
+                          arguments: {
+                            'id': category.id,
+                            'name': category.name,
+                            'imageUrl': category.imageUrl ?? category.iconUrl,
+                          },
                         );
                       }
                     },

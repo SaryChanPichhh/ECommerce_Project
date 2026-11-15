@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../app/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_empty.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../cart/presentation/bindings/cart_binding.dart';
 import '../../../cart/presentation/controllers/cart_controller.dart';
@@ -15,11 +17,27 @@ import '../controllers/favorite_controller.dart';
 class FavoritePage extends GetView<FavoriteController> {
   const FavoritePage({super.key});
 
+  String _filterLabel(String rawFilter) {
+    switch (rawFilter) {
+      case 'All':
+        return 'all'.tr;
+      case 'Latest':
+        return 'latest'.tr;
+      case 'Most Popular':
+        return 'most_popular'.tr;
+      case 'Cheapest':
+        return 'cheapest'.tr;
+      default:
+        return rawFilter;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // final favorites = List<Favorite>();
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'favorite'.tr,
@@ -27,75 +45,79 @@ class FavoritePage extends GetView<FavoriteController> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+            tooltip: 'notification'.tr,
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () => Get.toNamed(AppRoutes.profileNotification),
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
-          _buildFilterChips(),
-          Expanded(child: _buildProductGrid()),
+          _buildSearchBar(theme),
+          _buildFilterChips(theme),
+          Expanded(child: _buildProductGrid(context, theme)),
         ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.md,
         vertical: AppDimensions.sm,
       ),
       child: AppTextField(
-        hint: 'Search favorite...',
+        hint: 'search_favorites_hint'.tr,
         onChanged: controller.onSearchChanged,
-        prefixIcon: const Icon(
-          Icons.search,
-          color: AppColors.textSecondaryLight,
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
         ),
-        suffixIcon: const Icon(Icons.tune, color: AppColors.primary),
+        suffixIcon: const Icon(Icons.tune_rounded, color: AppColors.primary),
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
       ),
     );
   }
 
-  Widget _buildFilterChips() {
+  Widget _buildFilterChips(ThemeData theme) {
     return SizedBox(
       height: 50,
       child: Obx(() {
-        // Access the value directly in the Obx block so GetX tracks it correctly
         final currentFilter = controller.selectedFilter.value;
-        
+
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: AppDimensions.md),
           scrollDirection: Axis.horizontal,
           itemCount: controller.filters.length,
-          separatorBuilder: (context, index) =>
-              const SizedBox(width: AppDimensions.sm),
+          separatorBuilder: (_, _) => const SizedBox(width: AppDimensions.sm),
           itemBuilder: (context, index) {
             final filter = controller.filters[index];
             final isSelected = currentFilter == filter;
-            
+
             return ChoiceChip(
-              label: Text(filter),
+              label: Text(_filterLabel(filter)),
               selected: isSelected,
+              showCheckmark: false,
               onSelected: (selected) {
                 if (selected) {
                   controller.onFilterChanged(filter);
                 }
               },
               selectedColor: AppColors.primary,
+              backgroundColor: theme.cardColor,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : AppColors.textPrimaryLight,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color:
+                    isSelected ? Colors.white : theme.colorScheme.onSurface,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 12,
               ),
-              backgroundColor: AppColors.backgroundLight,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
                 side: BorderSide(
-                  color: isSelected ? AppColors.primary : AppColors.borderLight,
+                  color: isSelected
+                      ? AppColors.primary
+                      : theme.dividerColor.withValues(alpha: 0.35),
                 ),
               ),
             );
@@ -105,10 +127,10 @@ class FavoritePage extends GetView<FavoriteController> {
     );
   }
 
-  Widget _buildProductGrid() {
+  Widget _buildProductGrid(BuildContext context, ThemeData theme) {
     return Obx(() {
       if (controller.isLoading.value && controller.favorites.isEmpty) {
-        return const Center(child: AppLoading());
+        return Center(child: AppLoading(message: 'loading_products'.tr));
       }
 
       if (controller.errorMessage.value.isNotEmpty &&
@@ -122,42 +144,55 @@ class FavoritePage extends GetView<FavoriteController> {
       }
 
       if (controller.favorites.isEmpty) {
-        return const Center(
+        return Center(
           child: AppEmpty(
-            message: 'No favorites found',
-            icon: Icons.favorite_border,
+            message: 'no_favorites_found'.tr,
+            icon: Icons.favorite_border_rounded,
+            actionLabel: 'explore_catalog'.tr,
+            onAction: () => Get.toNamed(AppRoutes.products),
           ),
         );
       }
 
       return RefreshIndicator(
         onRefresh: controller.refreshFavorites,
+        color: AppColors.primary,
         child: GridView.builder(
           padding: const EdgeInsets.all(AppDimensions.md),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: AppDimensions.md,
             crossAxisSpacing: AppDimensions.md,
-            childAspectRatio: 0.75, // Adjust based on card height
+            childAspectRatio: 0.66,
           ),
           itemCount: controller.favorites.length,
           itemBuilder: (context, index) {
             final favorite = controller.favorites[index];
-            return _buildProductCard(context, favorite);
+            return _buildProductCard(context, theme, favorite);
           },
         ),
       );
     });
   }
 
-  Widget _buildProductCard(BuildContext context, Favorite favorite) {
+  Widget _buildProductCard(
+    BuildContext context,
+    ThemeData theme,
+    Favorite favorite,
+  ) {
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.45),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -168,47 +203,24 @@ class FavoritePage extends GetView<FavoriteController> {
         borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => Get.toNamed('/products/${favorite.id}'),
+          onTap: () => Get.toNamed(
+            '/products/${favorite.id}',
+            arguments: favorite.id,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image + Favorite Badge
               Expanded(
                 child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.backgroundLight,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(AppDimensions.radiusLg),
-                        ),
-                      ),
-                      width: double.infinity,
-                      child: favorite.imageUrl != null
-                          ? ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(AppDimensions.radiusLg),
-                              ),
-                              child: Image.network(
-                                favorite.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, error, stackTrace) =>
-                                    const Center(
-                                      child: Icon(
-                                        Icons.image_outlined,
-                                        size: 48,
-                                        color: AppColors.textSecondaryLight,
-                                      ),
-                                    ),
-                              ),
-                            )
-                          : const Center(
-                              child: Icon(
-                                Icons.image_outlined,
-                                size: 48,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
+                    AppNetworkImage(
+                      imageUrl: favorite.imageUrl,
+                      fit: BoxFit.cover,
+                      fallbackIcon: Icons.favorite_outline_rounded,
+                      fallbackIconSize: 40,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.06),
                     ),
                     Positioned(
                       top: AppDimensions.sm,
@@ -228,19 +240,19 @@ class FavoritePage extends GetView<FavoriteController> {
                           ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor.withValues(alpha: 0.9),
+                              color: theme.cardColor.withValues(alpha: 0.92),
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            padding: const EdgeInsets.all(AppDimensions.xs),
+                            padding: const EdgeInsets.all(6),
                             child: const Icon(
-                              Icons.favorite,
+                              Icons.favorite_rounded,
                               color: AppColors.error,
                               size: AppDimensions.iconSm,
                             ),
@@ -259,17 +271,17 @@ class FavoritePage extends GetView<FavoriteController> {
                   children: [
                     Text(
                       favorite.name,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      favorite.category ?? 'Unknown',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryLight,
+                      favorite.category ?? 'categories'.tr,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: secondaryColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -278,11 +290,15 @@ class FavoritePage extends GetView<FavoriteController> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '\$${favorite.price.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                        Expanded(
+                          child: Text(
+                            '\$${favorite.price.toStringAsFixed(2)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                         ),
                         Material(
@@ -309,7 +325,8 @@ class FavoritePage extends GetView<FavoriteController> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    color:
+                                        AppColors.primary.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

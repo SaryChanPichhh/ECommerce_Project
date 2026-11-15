@@ -1,37 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_empty.dart';
 import '../../../../core/widgets/app_error.dart';
 import '../../../../core/widgets/app_loading.dart';
-import '../controllers/order_controller.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/order.dart';
+import '../controllers/order_controller.dart';
 
 class OrderListPage extends GetView<OrderController> {
   const OrderListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: Text('my_orders'.tr),
-          bottom: const TabBar(
-            indicatorColor: AppColors.primary,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: Colors.grey,
+          bottom: TabBar(
+            indicatorColor: theme.colorScheme.primary,
+            labelColor: theme.colorScheme.primary,
+            unselectedLabelColor: secondaryColor,
             tabs: [
-              Tab(text: 'Order'),
-              Tab(text: 'History'),
+              Tab(text: 'order_tab'.tr),
+              Tab(text: 'history_tab'.tr),
             ],
           ),
         ),
         body: Obx(() {
-          if (controller.isLoading.value) return const AppLoading(message: 'Loading orders...');
-          if (controller.errorMessage.value.isNotEmpty) {
-            return AppError(message: controller.errorMessage.value, onRetry: controller.fetchOrders);
+          if (controller.isLoading.value && controller.orders.isEmpty) {
+            return AppLoading(message: 'loading_orders'.tr);
+          }
+          if (controller.errorMessage.value.isNotEmpty &&
+              controller.orders.isEmpty) {
+            return AppError(
+              message: controller.errorMessage.value,
+              onRetry: controller.fetchOrders,
+            );
           }
 
           final activeOrders =
@@ -41,10 +52,11 @@ class OrderListPage extends GetView<OrderController> {
 
           return RefreshIndicator(
             onRefresh: controller.refreshOrders,
+            color: AppColors.primary,
             child: TabBarView(
               children: [
-                _buildOrderList(activeOrders, isActive: true),
-                _buildOrderList(historyOrders, isActive: false),
+                _buildOrderList(context, activeOrders, isActive: true),
+                _buildOrderList(context, historyOrders, isActive: false),
               ],
             ),
           );
@@ -56,19 +68,19 @@ class OrderListPage extends GetView<OrderController> {
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case OrderStatus.pending:
-        return Colors.orange;
+        return AppColors.warning;
       case OrderStatus.confirmed:
       case OrderStatus.processing:
       case OrderStatus.shipped:
-        return Colors.blue;
+        return AppColors.info;
       case OrderStatus.delivered:
       case OrderStatus.completed:
-        return Colors.green;
+        return AppColors.success;
       case OrderStatus.cancelled:
       case OrderStatus.failed:
-        return Colors.red;
+        return AppColors.error;
       default:
-        return Colors.grey;
+        return AppColors.textSecondaryLight;
     }
   }
 
@@ -95,10 +107,18 @@ class OrderListPage extends GetView<OrderController> {
     }
   }
 
-  Widget _buildOrderList(List<Order> orders, {required bool isActive}) {
+  Widget _buildOrderList(
+    BuildContext context,
+    List<Order> orders, {
+    required bool isActive,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.62);
+
     if (orders.isEmpty) {
-      return const AppEmpty(
-        message: 'No orders found',
+      return AppEmpty(
+        message: 'no_orders_found'.tr,
         icon: Icons.receipt_long_outlined,
       );
     }
@@ -115,7 +135,7 @@ class OrderListPage extends GetView<OrderController> {
             order.storeName ??
             order.customerName ??
             order.orderNumber ??
-            'Order #${order.id}';
+            '${'order_tab'.tr} #${order.id}';
         final subtitleOrderNo = order.orderNumber ?? order.id;
         final itemQty =
             item?.quantity ?? order.itemCount ?? order.items?.length ?? 1;
@@ -128,9 +148,12 @@ class OrderListPage extends GetView<OrderController> {
           margin: const EdgeInsets.only(bottom: AppDimensions.md),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            side: BorderSide(
+              color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.45),
+            ),
           ),
-          elevation: 2,
-          shadowColor: Colors.black12,
+          elevation: isDark ? 1 : 2,
+          shadowColor: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
           child: Padding(
             padding: const EdgeInsets.all(AppDimensions.md),
             child: Column(
@@ -138,46 +161,32 @@ class OrderListPage extends GetView<OrderController> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product / Order Thumbnail
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius:
-                            BorderRadius.circular(AppDimensions.radiusMd),
+                    ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(AppDimensions.radiusMd),
+                      child: AppNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        fallbackIcon: Icons.shopping_bag_outlined,
+                        fallbackIconSize: 28,
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: (imageUrl != null && imageUrl.isNotEmpty)
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.shopping_bag_outlined,
-                                color: Colors.grey,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.shopping_bag_outlined,
-                              color: Colors.grey,
-                              size: 32,
-                            ),
                     ),
                     const SizedBox(width: AppDimensions.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title and Status Badge
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
                                 child: Text(
                                   titleText,
-                                  style: const TextStyle(
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -190,13 +199,13 @@ class OrderListPage extends GetView<OrderController> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: statusColor.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   statusLabel,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: statusColor,
                                   ),
@@ -205,7 +214,6 @@ class OrderListPage extends GetView<OrderController> {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          // Order number / Variant, Qty, Price
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
@@ -216,32 +224,27 @@ class OrderListPage extends GetView<OrderController> {
                                     Text(
                                       item?.variantName != null &&
                                               item!.variantName!.isNotEmpty
-                                          ? 'Variant: ${item.variantName}'
-                                          : 'Order: $subtitleOrderNo',
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
+                                          ? '${'variant'.tr}: ${item.variantName}'
+                                          : '${'order_tab'.tr}: $subtitleOrderNo',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: secondaryColor),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Items / Qty : $itemQty',
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
+                                      '${'items_label'.tr} / ${'qty'.tr}$itemQty',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: secondaryColor),
                                     ),
                                   ],
                                 ),
                               ),
                               Text(
                                 '\$${price.toStringAsFixed(2)}',
-                                style: const TextStyle(
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: AppColors.primary,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
                             ],
@@ -254,7 +257,6 @@ class OrderListPage extends GetView<OrderController> {
                 const SizedBox(height: AppDimensions.md),
                 const Divider(height: 1),
                 const SizedBox(height: AppDimensions.md),
-                // Buttons
                 Row(
                   children: [
                     Expanded(
@@ -264,7 +266,7 @@ class OrderListPage extends GetView<OrderController> {
                           arguments: order.id,
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.primary),
+                          minimumSize: const Size(0, 44),
                           shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.circular(AppDimensions.radiusLg),
@@ -287,8 +289,7 @@ class OrderListPage extends GetView<OrderController> {
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
+                          minimumSize: const Size(0, 44),
                           shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.circular(AppDimensions.radiusLg),
@@ -296,8 +297,8 @@ class OrderListPage extends GetView<OrderController> {
                         ),
                         child: Text(
                           order.canPay
-                              ? 'Pay Now'
-                              : (isActive ? 'Tracking' : 'Order Summary'),
+                              ? 'pay_now'.tr
+                              : (isActive ? 'tracking'.tr : 'order_summary'.tr),
                         ),
                       ),
                     ),

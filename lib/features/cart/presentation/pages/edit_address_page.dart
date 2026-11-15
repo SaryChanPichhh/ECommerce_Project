@@ -3,9 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
+
 import '../../../../core/services/map_location_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../widgets/slippy_tile_map.dart';
+
+enum MapViewMode {
+  osm,
+  satellite,
+  google,
+}
 
 class EditAddressPage extends StatefulWidget {
   const EditAddressPage({super.key});
@@ -19,19 +27,20 @@ class _EditAddressPageState extends State<EditAddressPage> {
   final TextEditingController _floorController = TextEditingController();
   final TextEditingController _instructionsController = TextEditingController();
 
-  // Sheet height tracking
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   bool _isExpanded = false;
 
-  // Google Map Controller & State
   GoogleMapController? _mapController;
-  MapType _currentMapType = MapType.normal;
+  final MapType _currentMapType = MapType.normal;
+  MapViewMode _viewMode = MapViewMode.osm;
+  int _zoomLevel = 16;
 
-  // Selected Location (Default: SETEC Institute, Phnom Penh)
   double _currentLat = 11.5684;
   double _currentLng = 104.8906;
   String _selectedLocationName = 'SETEC Institute';
-  String _selectedLocationAddress = 'Russian Federation Blvd, Toul Kork, Phnom Penh';
+  String _selectedLocationAddress =
+      'Russian Federation Blvd, Toul Kork, Phnom Penh';
 
   bool _isGeocoding = false;
   Timer? _debounceTimer;
@@ -40,7 +49,6 @@ class _EditAddressPageState extends State<EditAddressPage> {
   void initState() {
     super.initState();
 
-    // Check if arguments were passed from PaymentPage
     final args = Get.arguments;
     if (args is Map<String, dynamic>) {
       if (args['name'] != null && (args['name'] as String).isNotEmpty) {
@@ -59,7 +67,6 @@ class _EditAddressPageState extends State<EditAddressPage> {
 
     _locationController.text = _selectedLocationAddress;
 
-    // Listen to sheet position changes to toggle button text
     _sheetController.addListener(() {
       final isNowExpanded = _sheetController.size > 0.55;
       if (isNowExpanded != _isExpanded) {
@@ -110,6 +117,7 @@ class _EditAddressPageState extends State<EditAddressPage> {
   }
 
   void _showLocationPicker() {
+    final parentTheme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -120,6 +128,8 @@ class _EditAddressPageState extends State<EditAddressPage> {
       builder: (context) {
         List<LocationSearchResult> displayedLocations =
             List.from(MapLocationService.presetLocations);
+        final secondaryColor =
+            parentTheme.colorScheme.onSurface.withValues(alpha: 0.62);
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -131,57 +141,58 @@ class _EditAddressPageState extends State<EditAddressPage> {
               builder: (context, scrollController) {
                 return Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    color: parentTheme.scaffoldBackgroundColor,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   padding: const EdgeInsets.all(AppDimensions.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Drag handle
                       Center(
                         child: Container(
                           width: 40,
                           height: 4,
                           margin: const EdgeInsets.only(bottom: AppDimensions.md),
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: parentTheme.dividerColor,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ),
                       Text(
-                        'Select or Search Location',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        'select_location'.tr,
+                        style: parentTheme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: AppDimensions.md),
-
-                      // Search textfield
                       TextField(
                         decoration: InputDecoration(
-                          hintText: 'Search landmark or street in Phnom Penh...',
-                          prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                          hintText: 'search_location_hint'.tr,
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.primary,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).cardColor,
+                          fillColor: parentTheme.cardColor,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         onChanged: (query) async {
-                          final results =
-                              await MapLocationService.instance.searchPlaces(query);
+                          final results = await MapLocationService.instance
+                              .searchPlaces(query);
                           setModalState(() {
                             displayedLocations = results;
                           });
                         },
                       ),
                       const SizedBox(height: AppDimensions.md),
-
-                      // Location list
                       Expanded(
                         child: ListView.builder(
                           controller: scrollController,
@@ -196,17 +207,21 @@ class _EditAddressPageState extends State<EditAddressPage> {
                               leading: CircleAvatar(
                                 backgroundColor: isSelected
                                     ? AppColors.primary.withValues(alpha: 0.15)
-                                    : Colors.grey.withValues(alpha: 0.1),
+                                    : parentTheme.colorScheme.onSurface
+                                        .withValues(alpha: 0.08),
                                 child: Icon(
                                   Icons.location_on,
-                                  color: isSelected ? AppColors.primary : Colors.grey,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : secondaryColor,
                                 ),
                               ),
                               title: Text(
                                 loc.name,
                                 style: TextStyle(
-                                  fontWeight:
-                                      isSelected ? FontWeight.bold : FontWeight.w600,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
                                   color: isSelected ? AppColors.primary : null,
                                 ),
                               ),
@@ -214,14 +229,21 @@ class _EditAddressPageState extends State<EditAddressPage> {
                                 loc.address,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: secondaryColor,
+                                ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check_circle, color: AppColors.primary)
+                                  ? const Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.primary,
+                                    )
                                   : null,
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppDimensions.radiusMd),
+                                borderRadius: BorderRadius.circular(
+                                  AppDimensions.radiusMd,
+                                ),
                               ),
                               onTap: () {
                                 setState(() {
@@ -267,6 +289,7 @@ class _EditAddressPageState extends State<EditAddressPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     const double minChildSize = 0.35;
     const double maxChildSize = 0.90;
     const double initialChildSize = 0.45;
@@ -274,33 +297,56 @@ class _EditAddressPageState extends State<EditAddressPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // â”€â”€ Full-screen Real Google Map â”€â”€
+          // Full-screen Map View (SlippyTileMap or GoogleMap)
           Positioned.fill(
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: LatLng(_currentLat, _currentLng),
-                zoom: 16.0,
-              ),
-              mapType: _currentMapType,
-              myLocationEnabled: false,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              compassEnabled: true,
-              mapToolbarEnabled: false,
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
-              onCameraMove: _onCameraMove,
-              onCameraIdle: _onCameraIdle,
-              onTap: (latLng) {
-                _mapController?.animateCamera(
-                  CameraUpdate.newLatLng(latLng),
-                );
-              },
-            ),
+            child: _viewMode == MapViewMode.google
+                ? GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(_currentLat, _currentLng),
+                      zoom: _zoomLevel.toDouble(),
+                    ),
+                    mapType: _currentMapType,
+                    myLocationEnabled: false,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    compassEnabled: true,
+                    mapToolbarEnabled: false,
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                    },
+                    onCameraMove: _onCameraMove,
+                    onCameraIdle: _onCameraIdle,
+                    onTap: (latLng) {
+                      setState(() {
+                        _currentLat = latLng.latitude;
+                        _currentLng = latLng.longitude;
+                      });
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLng(latLng),
+                      );
+                      _onCameraIdle();
+                    },
+                  )
+                : SlippyTileMap(
+                    latitude: _currentLat,
+                    longitude: _currentLng,
+                    zoom: _zoomLevel,
+                    source: _viewMode == MapViewMode.satellite
+                        ? TileMapSource.satellite
+                        : TileMapSource.osm,
+                    verticalCenterOffset: -0.12,
+                    onPanDelta: (dLat, dLng) {
+                      setState(() {
+                        _currentLat = (_currentLat + dLat).clamp(-85.0, 85.0);
+                        _currentLng =
+                            ((_currentLng + dLng + 180.0) % 360.0) - 180.0;
+                      });
+                    },
+                    onPanEnd: _onCameraIdle,
+                  ),
           ),
 
-          // â”€â”€ Fixed Center Pin with Location Name Bubble â”€â”€
+          // Fixed Center Pin with Location Name Bubble
           Positioned(
             top: 0,
             left: 0,
@@ -312,13 +358,16 @@ class _EditAddressPageState extends State<EditAddressPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
+                            color: Colors.black.withValues(alpha: 0.16),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -337,23 +386,27 @@ class _EditAddressPageState extends State<EditAddressPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Locating...',
-                              style: TextStyle(
+                            Text(
+                              'locating'.tr,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                                 color: AppColors.primary,
                               ),
                             ),
                           ] else ...[
-                            Icon(Icons.location_on, size: 14, color: AppColors.primary),
+                            const Icon(
+                              Icons.location_on,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               _selectedLocationName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: Colors.black87,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                           ],
@@ -362,14 +415,14 @@ class _EditAddressPageState extends State<EditAddressPage> {
                     ),
                     const Icon(
                       Icons.location_pin,
-                      color: Colors.red,
+                      color: AppColors.error,
                       size: 46,
                     ),
                     Container(
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: 0.22),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -379,7 +432,7 @@ class _EditAddressPageState extends State<EditAddressPage> {
             ),
           ),
 
-          // ── Top Floating Controls ──
+          // Top Floating Controls
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             left: 14,
@@ -387,9 +440,12 @@ class _EditAddressPageState extends State<EditAddressPage> {
               child: Material(
                 elevation: 4,
                 shape: const CircleBorder(),
-                color: Colors.white,
+                color: theme.cardColor,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: theme.colorScheme.onSurface,
+                  ),
                   onPressed: () => Get.back(),
                 ),
               ),
@@ -402,47 +458,177 @@ class _EditAddressPageState extends State<EditAddressPage> {
             child: PointerInterceptor(
               child: Column(
                 children: [
-                  // Toggle Map Type (Normal / Satellite)
-                  FloatingActionButton.small(
-                    heroTag: 'map_type_btn',
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    onPressed: () {
+                  // Map Source Selector (OSM, Satellite, Google Maps)
+                  PopupMenuButton<MapViewMode>(
+                    tooltip: 'map_source'.tr,
+                    color: theme.cardColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppDimensions.radiusLg),
+                    ),
+                    icon: Material(
+                      elevation: 4,
+                      shape: const CircleBorder(),
+                      color: theme.cardColor,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          switch (_viewMode) {
+                            MapViewMode.osm => Icons.map_outlined,
+                            MapViewMode.satellite =>
+                              Icons.satellite_alt_outlined,
+                            MapViewMode.google => Icons.public_rounded,
+                          },
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    onSelected: (mode) {
                       setState(() {
-                        _currentMapType = _currentMapType == MapType.normal
-                            ? MapType.satellite
-                            : MapType.normal;
+                        _viewMode = mode;
                       });
                     },
-                    child: Icon(
-                      _currentMapType == MapType.normal
-                          ? Icons.satellite_alt_outlined
-                          : Icons.map_outlined,
-                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: MapViewMode.osm,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              color: _viewMode == MapViewMode.osm
+                                  ? AppColors.primary
+                                  : null,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'osm_map'.tr,
+                              style: TextStyle(
+                                fontWeight: _viewMode == MapViewMode.osm
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: _viewMode == MapViewMode.osm
+                                    ? AppColors.primary
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: MapViewMode.satellite,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.satellite_alt_outlined,
+                              color: _viewMode == MapViewMode.satellite
+                                  ? AppColors.primary
+                                  : null,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'satellite_map'.tr,
+                              style: TextStyle(
+                                fontWeight: _viewMode == MapViewMode.satellite
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: _viewMode == MapViewMode.satellite
+                                    ? AppColors.primary
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: MapViewMode.google,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.public_rounded,
+                              color: _viewMode == MapViewMode.google
+                                  ? AppColors.primary
+                                  : null,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'google_map'.tr,
+                              style: TextStyle(
+                                fontWeight: _viewMode == MapViewMode.google
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: _viewMode == MapViewMode.google
+                                    ? AppColors.primary
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-
-                  // Re-center on Phnom Penh / Selected position
+                  const SizedBox(height: 8),
+                  // Zoom In Button
+                  FloatingActionButton.small(
+                    heroTag: 'zoom_in_btn',
+                    tooltip: 'zoom_in'.tr,
+                    backgroundColor: theme.cardColor,
+                    foregroundColor: theme.colorScheme.onSurface,
+                    onPressed: () {
+                      setState(() {
+                        _zoomLevel = (_zoomLevel + 1).clamp(12, 18);
+                      });
+                      _mapController?.animateCamera(CameraUpdate.zoomIn());
+                    },
+                    child: const Icon(Icons.add, size: 20),
+                  ),
+                  const SizedBox(height: 8),
+                  // Zoom Out Button
+                  FloatingActionButton.small(
+                    heroTag: 'zoom_out_btn',
+                    tooltip: 'zoom_out'.tr,
+                    backgroundColor: theme.cardColor,
+                    foregroundColor: theme.colorScheme.onSurface,
+                    onPressed: () {
+                      setState(() {
+                        _zoomLevel = (_zoomLevel - 1).clamp(12, 18);
+                      });
+                      _mapController?.animateCamera(CameraUpdate.zoomOut());
+                    },
+                    child: const Icon(Icons.remove, size: 20),
+                  ),
+                  const SizedBox(height: 8),
+                  // Recenter Button
                   FloatingActionButton.small(
                     heroTag: 'recenter_btn',
-                    backgroundColor: Colors.white,
+                    tooltip: 'recenter'.tr,
+                    backgroundColor: theme.cardColor,
                     foregroundColor: AppColors.primary,
                     onPressed: () {
+                      setState(() {
+                        _currentLat = 11.5684;
+                        _currentLng = 104.8906;
+                        _zoomLevel = 16;
+                      });
                       _mapController?.animateCamera(
                         CameraUpdate.newLatLngZoom(
-                          LatLng(_currentLat, _currentLng),
+                          const LatLng(11.5684, 104.8906),
                           16.0,
                         ),
                       );
+                      _onCameraIdle();
                     },
-                    child: const Icon(Icons.my_location),
+                    child: const Icon(Icons.my_location, size: 20),
                   ),
                 ],
               ),
             ),
           ),
 
-          // ── Draggable Bottom Sheet ──
+          // Draggable Bottom Sheet
           DraggableScrollableSheet(
             controller: _sheetController,
             initialChildSize: initialChildSize,
@@ -452,113 +638,124 @@ class _EditAddressPageState extends State<EditAddressPage> {
               return PointerInterceptor(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 18,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(AppDimensions.lg),
-                  children: [
-                    // Drag handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: AppDimensions.lg),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+                    color: theme.scaffoldBackgroundColor,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.14),
+                        blurRadius: 18,
+                        offset: const Offset(0, -4),
                       ),
-                    ),
-
-                    // â”€â”€ Location TextField â”€â”€
-                    TextField(
-                      controller: _locationController,
-                      readOnly: true,
-                      onTap: _showLocationPicker,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.map_outlined, color: AppColors.primary),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
-                          onPressed: _showLocationPicker,
-                        ),
-                        hintText: 'Delivery address',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                        ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.md),
-
-                    // â”€â”€ Floor TextField â”€â”€
-                    TextField(
-                      controller: _floorController,
-                      decoration: InputDecoration(
-                        hintText: 'Floor / Apartment / Unit (optional)',
-                        prefixIcon: const Icon(Icons.layers_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                        ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.md),
-
-                    // â”€â”€ Delivery Instructions TextField â”€â”€
-                    TextField(
-                      controller: _instructionsController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Delivery instructions (e.g. leave at the front door)',
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 40),
-                          child: Icon(Icons.note_outlined),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-                        ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      ),
-                    ),
-                    const SizedBox(height: AppDimensions.xl),
-
-                    // â”€â”€ Dynamic Button â”€â”€
-                    // Scroll UP (expanded) â†’ "Save and Continue"
-                    // Scroll DOWN (collapsed) â†’ "Apply Changes"
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _onSave,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+                    ],
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(AppDimensions.lg),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: AppDimensions.lg),
+                          decoration: BoxDecoration(
+                            color: theme.dividerColor,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        child: Text(
-                          _isExpanded ? 'Save and Continue' : 'Apply Changes',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      TextField(
+                        controller: _locationController,
+                        readOnly: true,
+                        onTap: _showLocationPicker,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(
+                            Icons.map_outlined,
+                            color: AppColors.primary,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.primary,
+                            ),
+                            onPressed: _showLocationPicker,
+                          ),
+                          hintText: 'delivery_address'.tr,
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: AppDimensions.lg),
-                  ],
+                      const SizedBox(height: AppDimensions.md),
+                      TextField(
+                        controller: _floorController,
+                        decoration: InputDecoration(
+                          hintText: 'floor_optional'.tr,
+                          prefixIcon: const Icon(Icons.layers_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.md),
+                      TextField(
+                        controller: _instructionsController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: 'delivery_instructions_hint'.tr,
+                          prefixIcon: const Padding(
+                            padding: EdgeInsets.only(bottom: 40),
+                            child: Icon(Icons.note_outlined),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppDimensions.radiusLg),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.xl),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _onSave,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppDimensions.radiusLg),
+                            ),
+                          ),
+                          child: Text(
+                            _isExpanded
+                                ? 'save_and_continue'.tr
+                                : 'apply_changes'.tr,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.lg),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
           ),
         ],
       ),

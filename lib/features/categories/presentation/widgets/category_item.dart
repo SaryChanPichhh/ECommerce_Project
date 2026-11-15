@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/category.dart';
 
 class CategoryItem extends StatelessWidget {
@@ -17,60 +19,69 @@ class CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final image = category.imageUrl ?? category.iconUrl;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-      child: Container(
-        width: 76,
-        margin: const EdgeInsets.only(right: AppDimensions.md),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              padding: const EdgeInsets.all(AppDimensions.xs),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: isSelected
-                    ? Border.all(color: AppColors.primary, width: 2)
-                    : null,
-              ),
-              child: ClipOval(
-                child: image != null && image.isNotEmpty && image.startsWith('http')
-                    ? Image.network(
-                        image,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          _getFallbackIcon(category.name),
-                          color: isSelected ? Colors.white : AppColors.primary,
-                          size: 24,
-                        ),
-                      )
-                    : Icon(
-                        _getFallbackIcon(category.name),
-                        color: isSelected ? Colors.white : AppColors.primary,
-                        size: 24,
-                      ),
-              ),
-            ),
-            const SizedBox(height: AppDimensions.xs),
-            Text(
-              category.name,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppColors.primary : null,
+    return Padding(
+      padding: const EdgeInsets.only(right: AppDimensions.sm + 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        child: SizedBox(
+          width: 78,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 60,
+                height: 60,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.14)
+                      : theme.cardColor,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : theme.dividerColor.withValues(alpha: 0.14),
+                    width: isSelected ? 2 : 1,
                   ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isSelected ? AppColors.primary : Colors.black)
+                          .withValues(alpha: isSelected ? 0.18 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: AppNetworkImage(
+                  imageUrl: image,
+                  borderRadius: BorderRadius.circular(15),
+                  fallbackIcon: _getFallbackIcon(category.name),
+                  fallbackIconSize: 26,
+                  fallbackIconColor:
+                      isSelected ? AppColors.primary : AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                category.name,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? AppColors.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -78,14 +89,38 @@ class CategoryItem extends StatelessWidget {
 
   IconData _getFallbackIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('electronic')) return Icons.devices;
-    if (lower.contains('cloth') || lower.contains('apparel') || lower.contains('fashion')) {
-      return Icons.checkroom;
+    if (lower.contains('electronic') || lower.contains('tech')) {
+      return Icons.devices_rounded;
     }
-    if (lower.contains('shoe')) return Icons.do_not_step;
-    if (lower.contains('device')) return Icons.smartphone;
-    if (lower.contains('accessor')) return Icons.watch;
-    if (lower.contains('sport')) return Icons.sports_basketball;
+    if (lower.contains('phone') || lower.contains('tablet')) {
+      return Icons.smartphone_rounded;
+    }
+    if (lower.contains('audio') || lower.contains('headphone')) {
+      return Icons.headphones_rounded;
+    }
+    if (lower.contains('laptop') || lower.contains('comput')) {
+      return Icons.laptop_mac_rounded;
+    }
+    if (lower.contains('watch') || lower.contains('wearable')) {
+      return Icons.watch_rounded;
+    }
+    if (lower.contains('gaming') || lower.contains('game')) {
+      return Icons.sports_esports_rounded;
+    }
+    if (lower.contains('camera') || lower.contains('drone')) {
+      return Icons.camera_alt_rounded;
+    }
+    if (lower.contains('home') || lower.contains('living')) {
+      return Icons.chair_outlined;
+    }
+    if (lower.contains('cloth') ||
+        lower.contains('apparel') ||
+        lower.contains('fashion')) {
+      return Icons.checkroom_rounded;
+    }
+    if (lower.contains('shoe') || lower.contains('footwear')) {
+      return Icons.directions_run_rounded;
+    }
     return Icons.category_outlined;
   }
 }

@@ -50,7 +50,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<void> clearAuthData() async {
-    await _localStorage.clearTokens();
+    await _localStorage.clearAuthData();
   }
 
   @override

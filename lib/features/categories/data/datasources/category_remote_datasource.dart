@@ -14,19 +14,32 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
 
   @override
   Future<List<CategoryModel>> getCategories({String? parentId}) async {
-    final queryParams = <String, dynamic>{};
     if (parentId != null && parentId.isNotEmpty) {
-      queryParams['parent_id'] = parentId;
+      final response = await _apiClient.get(
+        ApiConstants.publicCategories,
+        queryParameters: {'parent_id': parentId},
+      );
+      return _extractCategoryList(response.data);
     }
 
-    final response = await _apiClient.get(
-      ApiConstants.publicCategories,
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
-    );
+    // Fetch full hierarchical tree so both top-level and child categories
+    // are visible across storefront carousels and filters.
+    try {
+      final treeResponse = await _apiClient.get(ApiConstants.publicCategoriesTree);
+      final flattened = _flattenTree(treeResponse.data);
+      if (flattened.isNotEmpty) {
+        return flattened;
+      }
+    } catch (_) {
+      // Fallback to flat publicCategories endpoint below.
+    }
 
-    final data = response.data;
-    List<dynamic> items;
+    final response = await _apiClient.get(ApiConstants.publicCategories);
+    return _extractCategoryList(response.data);
+  }
 
+  List<CategoryModel> _extractCategoryList(dynamic data) {
+    final List<dynamic> items;
     if (data is Map<String, dynamic>) {
       items = data['data'] as List<dynamic>? ?? [];
     } else if (data is List) {
@@ -36,7 +49,42 @@ class CategoryRemoteDataSourceImpl implements CategoryRemoteDataSource {
     }
 
     return items
-        .map((item) => CategoryModel.fromJson(item as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .map(CategoryModel.fromJson)
         .toList();
+  }
+
+  List<CategoryModel> _flattenTree(dynamic data) {
+    final List<dynamic> roots;
+    if (data is Map<String, dynamic>) {
+      roots = data['data'] as List<dynamic>? ?? [];
+    } else if (data is List) {
+      roots = data;
+    } else {
+      roots = [];
+    }
+
+    final seenIds = <String>{};
+    final result = <CategoryModel>[];
+
+    void walk(dynamic node) {
+      if (node is! Map) return;
+      final map = Map<String, dynamic>.from(node);
+      final model = CategoryModel.fromJson(map);
+      if (model.id.isNotEmpty && seenIds.add(model.id)) {
+        result.add(model);
+      }
+      final children = map['children'];
+      if (children is List) {
+        for (final child in children) {
+          walk(child);
+        }
+      }
+    }
+
+    for (final root in roots) {
+      walk(root);
+    }
+    return result;
   }
 }

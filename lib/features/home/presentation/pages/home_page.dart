@@ -2,8 +2,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../app/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/widgets/app_empty.dart';
+import '../../../../core/widgets/app_loading.dart';
+import '../../../../core/widgets/app_network_image.dart';
+import '../../../cart/presentation/bindings/cart_binding.dart';
+import '../../../cart/presentation/controllers/cart_controller.dart';
+import '../../../categories/presentation/widgets/category_list.dart';
+import '../../../products/domain/entities/product.dart';
+import '../../../products/presentation/widgets/product_grid_card.dart';
 import '../controllers/home_controller.dart';
 
 class HomePage extends GetView<HomeController> {
@@ -11,145 +20,240 @@ class HomePage extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppDimensions.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Row 1: Header
-              _buildHeader(context),
-              const SizedBox(height: AppDimensions.lg),
-
-              // Row 2: Slideshow
-              _buildSlideshow(),
-              const SizedBox(height: AppDimensions.lg),
-
-              // Row 3: Categories
-              _buildCategories(context),
-              const SizedBox(height: AppDimensions.lg),
-
-              // Row 4: Products
-              _buildProductsList(context),
-            ],
+        child: RefreshIndicator(
+          onRefresh: controller.reload,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.md,
+              AppDimensions.sm,
+              AppDimensions.md,
+              AppDimensions.xl,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context, theme),
+                const SizedBox(height: AppDimensions.md),
+                _buildSearchPill(context, theme),
+                const SizedBox(height: AppDimensions.lg),
+                const _AutoSlideshow(),
+                const SizedBox(height: AppDimensions.lg),
+                const CategoryList(),
+                const SizedBox(height: AppDimensions.lg),
+                _buildProductsList(context, theme),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-          child: const Icon(Icons.person, color: AppColors.primary),
-        ),
-        const SizedBox(width: AppDimensions.md),
+        Obx(() {
+          final user = controller.currentUser.value;
+          final avatarUrl = user?.avatar;
+          return Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: (avatarUrl != null && avatarUrl.isNotEmpty)
+                  ? AppNetworkImage(
+                      imageUrl: avatarUrl,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorWidget: Image.asset(
+                        'assets/images/profile.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.person_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/profile.jpg',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+            ),
+          );
+        }),
+        const SizedBox(width: AppDimensions.sm + 4),
         Expanded(
           child: Obx(() {
             final user = controller.currentUser.value;
+            final displayName = (user?.name != null && user!.name.trim().isNotEmpty)
+                ? user.name
+                : 'guest'.tr;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome,',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimaryLight,
+                  'welcome_greeting'.tr,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
-                  user?.name ?? 'Guest',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             );
           }),
         ),
-        IconButton(
-          onPressed: () {
-            // Notification action
-            Get.toNamed('/profile/notification');
-          },
-          icon: const Icon(Icons.notifications_outlined),
-          color: AppColors.primary,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSlideshow() {
-    return const _AutoSlideshow();
-  }
-
-
-  Widget _buildCategories(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Categories',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: AppDimensions.md),
-        SizedBox(
-          height: 85,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildCategoryItem(context, 'Electronics', Icons.devices),
-              _buildCategoryItem(context, 'Clothing', Icons.checkroom),
-              _buildCategoryItem(context, 'Shoes', Icons.do_not_step),
-              _buildCategoryItem(context, 'Accessories', Icons.watch),
-              _buildCategoryItem(context, 'Sports', Icons.sports_basketball),
-            ],
+        const SizedBox(width: AppDimensions.xs),
+        _buildCartActionButton(theme, isDark),
+        const SizedBox(width: AppDimensions.xs),
+        Container(
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.6),
+            ),
+          ),
+          child: IconButton(
+            tooltip: 'notification'.tr,
+            onPressed: () => Get.toNamed(AppRoutes.profileNotification),
+            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            color: AppColors.primary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, String label, IconData icon) {
-    return InkWell(
-      onTap: () {
-        // Navigate to category product list
-      },
-      borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-      child: Container(
-        width: 72,
-        margin: const EdgeInsets.only(right: AppDimensions.md),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppDimensions.sm),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+  Widget _buildCartActionButton(ThemeData theme, bool isDark) {
+    if (!Get.isRegistered<CartController>()) {
+      CartBinding().dependencies();
+    }
+    final cartController = Get.find<CartController>();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.6),
+        ),
+      ),
+      child: Obx(() {
+        final count = cartController.cart.value?.items.length ?? 0;
+        return IconButton(
+          tooltip: 'my_cart'.tr,
+          onPressed: () => Get.toNamed(AppRoutes.cart),
+          icon: Badge(
+            backgroundColor: AppColors.error,
+            textColor: Colors.white,
+            isLabelVisible: count > 0,
+            label: Text('$count'),
+            child: const Icon(Icons.shopping_bag_outlined, size: 21),
+          ),
+          color: theme.colorScheme.onSurface,
+        );
+      }),
+    );
+  }
+
+  Widget _buildSearchPill(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: theme.cardColor,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+      child: InkWell(
+        onTap: () => Get.toNamed(AppRoutes.products),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.md,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.55),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-              child: Icon(icon, color: AppColors.primary),
-            ),
-            const SizedBox(height: AppDimensions.xs),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.search_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              const SizedBox(width: AppDimensions.sm + 2),
+              Expanded(
+                child: Text(
+                  'search_products_hint'.tr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+                ),
+                child: const Icon(
+                  Icons.tune_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProductsList(BuildContext context) {
+  Widget _buildProductsList(BuildContext context, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -157,190 +261,99 @@ class HomePage extends GetView<HomeController> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Popular Products',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              'popular_products'.tr,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             TextButton(
-              onPressed: () => Get.toNamed('/products'),
-              child: const Text('See All'),
+              onPressed: () => Get.toNamed(AppRoutes.products),
+              child: Text('see_all'.tr),
             ),
           ],
         ),
-        const SizedBox(height: AppDimensions.md),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppDimensions.md,
-          crossAxisSpacing: AppDimensions.md,
-          childAspectRatio: 0.65,
-          children: [
-            _buildMockProductCard(
-              context,
-              name: 'Product 1',
-              desc: 'High quality electronics',
-              price: 29.99,
-              rating: 4.5,
-              orders: 120,
+        const SizedBox(height: AppDimensions.sm),
+        Obx(() {
+          if (controller.isLoadingProducts.value &&
+              controller.popularProducts.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppDimensions.xl),
+              child: AppLoading(message: 'loading_products'.tr),
+            );
+          }
+          if (controller.popularProducts.isEmpty) {
+            return AppEmpty(
+              message: 'no_products_found'.tr,
+              actionLabel: 'explore_catalog'.tr,
+              onAction: () => Get.toNamed(AppRoutes.products),
+            );
+          }
+          return GridView.builder(
+            itemCount: controller.popularProducts.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: AppDimensions.md,
+              crossAxisSpacing: AppDimensions.md,
+              childAspectRatio: 0.62,
             ),
-            _buildMockProductCard(
-              context,
-              name: 'Product 2',
-              desc: 'Premium clothing item',
-              price: 49.99,
-              rating: 4.8,
-              orders: 50,
-            ),
-            _buildMockProductCard(
-              context,
-              name: 'Product 3',
-              desc: 'Comfortable running shoes',
-              price: 19.99,
-              rating: 4.2,
-              orders: 300,
-            ),
-            _buildMockProductCard(
-              context,
-              name: 'Product 4',
-              desc: 'Luxury watch accessory',
-              price: 99.99,
-              rating: 4.9,
-              orders: 12,
-            ),
-          ],
-        ),
+            itemBuilder: (context, index) {
+              final product = controller.popularProducts[index];
+              return ProductGridCard(
+                product: product,
+                onTap: () => Get.toNamed(
+                  '/products/${product.id}',
+                  arguments: product.id,
+                ),
+                onAddToCartTap: () => _handleAddToCart(product),
+              );
+            },
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildMockProductCard(
-    BuildContext context, {
-    required String name,
-    required String desc,
-    required double price,
-    required double rating,
-    required int orders,
-  }) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-      ),
-      child: InkWell(
-        onTap: () => Get.toNamed('/products/1'),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.05),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppDimensions.radiusLg),
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 48,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: InkWell(
-                      onTap: () {
-                        // Handle favorite toggle
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor.withValues(alpha: 0.9),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.favorite_border,
-                          size: 16,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppDimensions.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    desc,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondaryLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 14, color: Colors.amber),
-                      const SizedBox(width: 2),
-                      Text(
-                        rating.toString(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '|$orders+ sold',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondaryLight,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${price.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+  Future<void> _handleAddToCart(Product product) async {
+    if (!Get.isRegistered<CartController>()) {
+      CartBinding().dependencies();
+    }
+    final cartController = Get.find<CartController>();
+    final inStockVariants = product.variants.where((v) => v.isInStock);
+    final selectedVariant = inStockVariants.isNotEmpty
+        ? inStockVariants.first
+        : (product.variants.isNotEmpty ? product.variants.first : null);
+    await cartController.addToCart(
+      productId: product.id,
+      variantId: selectedVariant?.id,
+      quantity: 1,
+      productName: product.name,
+      unitPrice: selectedVariant?.price ?? product.price,
+      productImageUrl: product.imageUrl,
+      variantName: selectedVariant?.name,
     );
   }
+}
+
+class _HeroSlideData {
+  final String badgeKey;
+  final String titleKey;
+  final String subtitle;
+  final String ctaKey;
+  final String r2Key;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  const _HeroSlideData({
+    required this.badgeKey,
+    required this.titleKey,
+    required this.subtitle,
+    required this.ctaKey,
+    required this.r2Key,
+    required this.gradient,
+    required this.onTap,
+  });
 }
 
 class _AutoSlideshow extends StatefulWidget {
@@ -355,21 +368,54 @@ class _AutoSlideshowState extends State<_AutoSlideshow> {
   int _currentPage = 0;
   Timer? _timer;
 
+  late final List<_HeroSlideData> _slides = [
+    _HeroSlideData(
+      badgeKey: 'flash_deals',
+      titleKey: 'tech_essentials',
+      subtitle: 'MacBook Pro M4 & UltraPhone 15',
+      ctaKey: 'shop_now',
+      r2Key: 'stores/tech-banner.jpg',
+      gradient: const [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+      onTap: () => Get.toNamed(AppRoutes.products),
+    ),
+    _HeroSlideData(
+      badgeKey: 'new_arrivals',
+      titleKey: 'streetwear_drop',
+      subtitle: 'Heritage Hoodies & Apex Nitro',
+      ctaKey: 'explore',
+      r2Key: 'stores/fashion-banner.jpg',
+      gradient: const [Color(0xFF5B21B6), Color(0xFF7C3AED)],
+      onTap: () => Get.toNamed(AppRoutes.products),
+    ),
+    _HeroSlideData(
+      badgeKey: 'featured_deals',
+      titleKey: 'new_arrivals',
+      subtitle: 'MacBook Pro 14 M4 Pro',
+      ctaKey: 'shop_now',
+      r2Key: 'products/macbook-pro-14-m4.jpg',
+      gradient: const [Color(0xFF0F766E), Color(0xFF06B6D4)],
+      onTap: () => Get.toNamed(
+        '/products/prod-000010',
+        arguments: 'prod-000010',
+      ),
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
-      if (_currentPage < 2) {
-        _currentPage++;
-      } else {
-        _currentPage = 0;
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      final next = (_currentPage + 1) % _slides.length;
+      if (mounted) {
+        setState(() {
+          _currentPage = next;
+        });
       }
-
       if (_pageController.hasClients) {
         _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeIn,
+          next,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
         );
       }
     });
@@ -384,36 +430,174 @@ class _AutoSlideshowState extends State<_AutoSlideshow> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 150,
-      child: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          _currentPage = index;
-        },
-        children: [
-          _buildSlide('Banner 1', AppColors.primary),
-          _buildSlide('Banner 2', AppColors.secondary),
-          _buildSlide('Banner 3', AppColors.accent),
-        ],
-      ),
+    return Column(
+      children: [
+        SizedBox(
+          height: 176,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _slides.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) => _buildSlide(context, _slides[index]),
+          ),
+        ),
+        const SizedBox(height: AppDimensions.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_slides.length, (index) {
+            final isActive = index == _currentPage;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              height: 6,
+              width: isActive ? 22 : 6,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.primary
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 
-  Widget _buildSlide(String title, Color color) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppDimensions.xs),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
-      ),
-      child: Center(
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
+  Widget _buildSlide(BuildContext context, _HeroSlideData slide) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Material(
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: slide.onTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background R2 image
+              AppNetworkImage(
+                imageUrl: slide.r2Key,
+                fit: BoxFit.cover,
+                backgroundColor: slide.gradient.first,
+                errorWidget: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: slide.gradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+              ),
+              // Modern dark scrim for crisp text legibility
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: 0.72),
+                      Colors.black.withValues(alpha: 0.32),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppDimensions.md + 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius:
+                            BorderRadius.circular(AppDimensions.radiusRound),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Text(
+                        slide.badgeKey.tr,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      slide.titleKey.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      slide.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(
+                          AppDimensions.radiusRound,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            slide.ctaKey.tr,
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

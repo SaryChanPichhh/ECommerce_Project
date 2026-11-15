@@ -14,7 +14,7 @@ class CloudflareR2Config {
 
   /// Cloudflare Account ID from Cloudflare dashboard
   static const String accountId = String.fromEnvironment(
-    StorageConstants.accountId,
+    'R2_ACCOUNT_ID',
     defaultValue: StorageConstants.accountId,
   );
 
@@ -61,7 +61,110 @@ class CloudflareR2Config {
 class CloudflareR2Service {
   final Dio _dio;
 
+  /// Cache presigned GET URLs per object key so repeated widget rebuilds (such as
+  /// the home slideshow or scrolling lists) reuse the exact same URL and hit
+  /// Flutter's [ImageCache] instead of re-signing a new `X-Amz-Date` every build.
+  static final Map<String, ({String url, DateTime expiresAt})>
+      _presignedGetCache = {};
+
   CloudflareR2Service({Dio? dio}) : _dio = dio ?? Dio();
+
+  /// Returns a stable image cache key for [url] by stripping transient SigV4
+  /// query parameters on Cloudflare R2 S3 URLs while leaving other URLs intact.
+  static String cacheKeyForUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.host.contains('r2.cloudflarestorage.com')) {
+      return url;
+    }
+    return 'r2://${uri.host}${uri.path}';
+  }
+
+  /// Resolves an image URL returned from Postgres/API into an immediately
+  /// displayable URL.
+  ///
+  /// - Preserves valid external HTTP(S) URLs (e.g., Unsplash, Maps, CDNs).
+  /// - For private Cloudflare R2 S3 URLs (`*.r2.cloudflarestorage.com`), parses
+  ///   any existing `X-Amz-Date` + `X-Amz-Expires` and automatically re-signs
+  ///   if unsigned or expiring within 5 minutes.
+  /// - For relative object keys (e.g., `products/foo.jpg` or `/ecommerce/foo.jpg`),
+  ///   returns a presigned R2 GET URL.
+  /// - Preserves local `assets/` paths and returns `null` for blank input.
+  static String? resolveImageUrl(String? rawUrl) {
+    if (rawUrl == null) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return null;
+
+    if (trimmed.startsWith('assets/')) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      final uri = Uri.tryParse(trimmed);
+      if (uri == null || !uri.host.contains('r2.cloudflarestorage.com')) {
+        return trimmed;
+      }
+
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) return trimmed;
+
+      String objectKey;
+      if (segments.first == CloudflareR2Config.bucketName ||
+          segments.first == StorageConstants.bucketName) {
+        if (segments.length <= 1) return trimmed;
+        objectKey = segments.sublist(1).join('/');
+      } else {
+        objectKey = segments.join('/');
+      }
+
+      final amzDate = uri.queryParameters['X-Amz-Date'];
+      final amzExpires = uri.queryParameters['X-Amz-Expires'];
+      final amzSig = uri.queryParameters['X-Amz-Signature'];
+
+      if (amzDate != null && amzExpires != null && amzSig != null) {
+        final signedAt = _parseBasicIso8601(amzDate);
+        final expiresSec = int.tryParse(amzExpires);
+        if (signedAt != null && expiresSec != null) {
+          final expiresAt = signedAt.add(Duration(seconds: expiresSec));
+          final refreshThreshold =
+              DateTime.now().toUtc().add(const Duration(minutes: 5));
+          if (expiresAt.isAfter(refreshThreshold)) {
+            return trimmed;
+          }
+        }
+      }
+
+      if (CloudflareR2Config.hasValidCredentials) {
+        return CloudflareR2Service().generatePresignedGetUrl(objectKey);
+      }
+      return trimmed;
+    }
+
+    final cleanKey = trimmed.replaceFirst(RegExp(r'^/+'), '');
+    if (cleanKey.isEmpty) return null;
+    if (CloudflareR2Config.hasValidCredentials) {
+      return CloudflareR2Service().generatePresignedGetUrl(cleanKey);
+    }
+    return trimmed;
+  }
+
+  static DateTime? _parseBasicIso8601(String value) {
+    // Format: YYYYMMDDTHHMMSSZ
+    final match = RegExp(r'^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$')
+        .firstMatch(value);
+    if (match == null) return null;
+    try {
+      return DateTime.utc(
+        int.parse(match.group(1)!),
+        int.parse(match.group(2)!),
+        int.parse(match.group(3)!),
+        int.parse(match.group(4)!),
+        int.parse(match.group(5)!),
+        int.parse(match.group(6)!),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Generic method to upload any image or file to Cloudflare R2.
   /// [folder] defines the folder path within the bucket (e.g. 'avatars', 'products', 'uploads').
@@ -267,8 +370,18 @@ class CloudflareR2Service {
   /// Generates a signed AWS SigV4 GET URL (valid for 7 days) allowing public access
   /// to private R2 bucket objects without requiring client authentication headers.
   String generatePresignedGetUrl(String objectKey, {int expiresIn = 604800}) {
+    final cleanKey = objectKey.replaceFirst(RegExp(r'^/+'), '');
     if (!CloudflareR2Config.hasValidCredentials) {
-      return _buildRawUrl(objectKey);
+      return _buildRawUrl(cleanKey);
+    }
+
+    final now = DateTime.now().toUtc();
+    if (expiresIn >= 3600) {
+      final cached = _presignedGetCache[cleanKey];
+      if (cached != null &&
+          cached.expiresAt.isAfter(now.add(const Duration(minutes: 30)))) {
+        return cached.url;
+      }
     }
 
     final accountId = CloudflareR2Config.accountId;
@@ -277,9 +390,8 @@ class CloudflareR2Service {
     final secretKey = CloudflareR2Config.secretAccessKey;
 
     final host = '$accountId.r2.cloudflarestorage.com';
-    final path = '/$bucketName/$objectKey';
+    final path = '/$bucketName/$cleanKey';
 
-    final now = DateTime.now().toUtc();
     final amzDate = _formatBasicIso8601(now);
     final dateStamp = amzDate.substring(0, 8);
     final credentialScope = '$dateStamp/auto/s3/aws4_request';
@@ -314,7 +426,15 @@ class CloudflareR2Service {
     final signature =
         Hmac(sha256, kSigning).convert(utf8.encode(stringToSign)).toString();
 
-    return 'https://$host$path?$canonicalQueryString&X-Amz-Signature=$signature';
+    final signedUrl =
+        'https://$host$path?$canonicalQueryString&X-Amz-Signature=$signature';
+    if (expiresIn >= 3600) {
+      _presignedGetCache[cleanKey] = (
+        url: signedUrl,
+        expiresAt: now.add(Duration(seconds: expiresIn)),
+      );
+    }
+    return signedUrl;
   }
 
   String _buildPublicUrl(String objectKey) {

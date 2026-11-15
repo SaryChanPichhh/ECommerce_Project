@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../favorite/presentation/bindings/favorite_binding.dart';
 import '../../../favorite/presentation/controllers/favorite_controller.dart';
 import '../../domain/entities/product.dart';
@@ -28,6 +29,9 @@ class ProductGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryTextColor =
+        theme.colorScheme.onSurface.withValues(alpha: 0.62);
     final hasDiscount = product.compareAtPrice != null &&
         product.compareAtPrice! > product.price;
     final discountPercent = hasDiscount
@@ -38,12 +42,12 @@ class ProductGridCard extends StatelessWidget {
         : 0;
 
     return Card(
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
+      elevation: isDark ? 1 : 2,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
         side: BorderSide(
-          color: theme.dividerColor.withValues(alpha: 0.06),
+          color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.45),
           width: 1,
         ),
       ),
@@ -57,35 +61,42 @@ class ProductGridCard extends StatelessWidget {
             // Product Image & Badges
             Expanded(
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    height: double.infinity,
-                    color: AppColors.primary.withValues(alpha: 0.04),
-                    child: (product.imageUrl != null &&
-                            product.imageUrl!.isNotEmpty &&
-                            product.imageUrl!.startsWith('http'))
-                        ? Image.network(
-                            product.imageUrl!,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, error, stackTrace) =>
-                                const Center(
-                              child: Icon(
-                                Icons.image_outlined,
-                                size: 40,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.inventory_2_outlined,
-                              size: 40,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
+                  AppNetworkImage(
+                    imageUrl: product.imageUrl,
+                    fit: BoxFit.cover,
+                    fallbackIcon: Icons.inventory_2_outlined,
+                    fallbackIconSize: 38,
+                    backgroundColor:
+                        AppColors.primary.withValues(alpha: isDark ? 0.14 : 0.05),
                   ),
+
+                  // Subtle bottom edge gradient when out of stock
+                  if (product.quantity <= 0)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius:
+                              BorderRadius.circular(AppDimensions.radiusRound),
+                        ),
+                        child: Text(
+                          'out_of_stock'.tr,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // Discount / Sale Badge
                   if (hasDiscount)
@@ -134,7 +145,7 @@ class ProductGridCard extends StatelessWidget {
                       right: 6,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: theme.cardColor.withValues(alpha: 0.9),
+                          color: theme.cardColor.withValues(alpha: 0.92),
                           shape: BoxShape.circle,
                         ),
                         child: PopupMenuButton<String>(
@@ -155,19 +166,21 @@ class ProductGridCard extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const PopupMenuItem(
+                            PopupMenuItem(
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.delete_outlined,
                                     size: 16,
-                                    color: Colors.red,
+                                    color: AppColors.error,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.red),
+                                    'delete'.tr,
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -187,20 +200,21 @@ class ProductGridCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Category label
-                  if (product.category != null && product.category!.isNotEmpty)
+                  if (product.category != null &&
+                      product.category!.trim().isNotEmpty) ...[
                     Text(
                       product.category!.toUpperCase(),
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color: AppColors.primary.withValues(alpha: 0.8),
+                        color: theme.colorScheme.primary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 2),
+                    const SizedBox(height: 2),
+                  ],
 
                   // Name
                   Text(
@@ -212,12 +226,16 @@ class ProductGridCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
 
                   // Rating & Sold
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 15,
+                        color: AppColors.warning,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         (product.ratingAverage > 0 ? product.ratingAverage : 4.8)
@@ -230,9 +248,9 @@ class ProductGridCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '| ${product.soldCount > 0 ? product.soldCount : 50}+ sold',
+                          '• ${product.soldCount > 0 ? product.soldCount : 24}+ ${'sold'.tr}',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondaryLight,
+                            color: secondaryTextColor,
                             fontSize: 10,
                           ),
                           maxLines: 1,
@@ -249,14 +267,16 @@ class ProductGridCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               '\$${product.price.toStringAsFixed(2)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppColors.primary,
+                                color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -264,8 +284,10 @@ class ProductGridCard extends StatelessWidget {
                             if (hasDiscount)
                               Text(
                                 '\$${product.compareAtPrice!.toStringAsFixed(2)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondaryLight,
+                                  color: secondaryTextColor,
                                   decoration: TextDecoration.lineThrough,
                                   fontSize: 10,
                                 ),
@@ -273,26 +295,7 @@ class ProductGridCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (product.quantity <= 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Out of stock',
-                            style: TextStyle(
-                              color: AppColors.error,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      else if (onAddToCartTap != null)
+                      if (product.quantity > 0 && onAddToCartTap != null)
                         Material(
                           color: Colors.transparent,
                           shape: const CircleBorder(),
@@ -300,13 +303,14 @@ class ProductGridCard extends StatelessWidget {
                             onTap: onAddToCartTap,
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
-                              padding: const EdgeInsets.all(5),
+                              padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    color:
+                                        AppColors.primary.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -332,6 +336,9 @@ class ProductGridCard extends StatelessWidget {
   }
 
   Widget _buildHeartButton(BuildContext context, ThemeData theme) {
+    final secondaryIconColor =
+        theme.colorScheme.onSurface.withValues(alpha: 0.65);
+
     if (Get.isRegistered<FavoriteController>()) {
       final favController = Get.find<FavoriteController>();
       return Obx(() {
@@ -339,52 +346,42 @@ class ProductGridCard extends StatelessWidget {
           product.id,
           defaultIsFavorite: product.isFavorite,
         );
-        return Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onFavoriteTap ??
-                () => favController.toggleFavoriteProduct(product),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: theme.cardColor.withValues(alpha: 0.92),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                isFav ? Icons.favorite : Icons.favorite_border,
-                size: 16,
-                color: isFav
-                    ? Colors.redAccent
-                    : AppColors.textSecondaryLight,
-              ),
-            ),
-          ),
+        return _heartCircle(
+          theme: theme,
+          isFav: isFav,
+          inactiveColor: secondaryIconColor,
+          onTap: onFavoriteTap ??
+              () => favController.toggleFavoriteProduct(product),
         );
       });
     }
 
-    // Fallback when FavoriteController not registered
+    return _heartCircle(
+      theme: theme,
+      isFav: product.isFavorite,
+      inactiveColor: secondaryIconColor,
+      onTap: onFavoriteTap ??
+          () {
+            if (!Get.isRegistered<FavoriteController>()) {
+              FavoriteBinding().dependencies();
+            }
+            Get.find<FavoriteController>().toggleFavoriteProduct(product);
+          },
+    );
+  }
+
+  Widget _heartCircle({
+    required ThemeData theme,
+    required bool isFav,
+    required Color inactiveColor,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onFavoriteTap ??
-            () {
-              if (!Get.isRegistered<FavoriteController>()) {
-                FavoriteBinding().dependencies();
-              }
-              Get.find<FavoriteController>().toggleFavoriteProduct(product);
-            },
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -392,18 +389,16 @@ class ProductGridCard extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Icon(
-            product.isFavorite ? Icons.favorite : Icons.favorite_border,
+            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             size: 16,
-            color: product.isFavorite
-                ? Colors.redAccent
-                : AppColors.textSecondaryLight,
+            color: isFav ? AppColors.error : inactiveColor,
           ),
         ),
       ),

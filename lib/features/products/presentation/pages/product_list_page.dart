@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../app/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_empty.dart';
@@ -25,41 +26,23 @@ class ProductListPage extends GetView<ProductController> {
       appBar: _buildAppBar(context, theme),
       body: Column(
         children: [
-          // Search Bar & Filter action
           _buildSearchBar(context, theme),
-
-          // Horizontal Category Filter Chips
           _buildCategoryChips(theme),
-
-          // Active Sort & Filter Indicator
           _buildSortIndicator(context, theme),
-
-          // Main Product Catalog (Grid / List)
           Expanded(
             child: _buildProductList(context, theme),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Get.toNamed('/products/create');
-          if (result == true) controller.fetchProducts();
-        },
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Add Product',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
     );
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, ThemeData theme) {
+    if (!Get.isRegistered<CartController>()) {
+      CartBinding().dependencies();
+    }
+    final cartController = Get.find<CartController>();
+
     return AppBar(
       elevation: 0,
       scrolledUnderElevation: 1,
@@ -78,9 +61,9 @@ class ProductListPage extends GetView<ProductController> {
           ),
           Obx(
             () => Text(
-              '${controller.filteredProducts.length} items',
+              '${controller.filteredProducts.length} ${'items_count'.tr}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondaryLight,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 fontSize: 11,
               ),
             ),
@@ -88,45 +71,43 @@ class ProductListPage extends GetView<ProductController> {
         ],
       ),
       actions: [
-        // Grid / List Toggle
         Obx(
           () => IconButton(
             tooltip:
-                controller.isGridView.value ? 'List View' : 'Grid View',
+                controller.isGridView.value ? 'list_view'.tr : 'grid_view'.tr,
             icon: Icon(
               controller.isGridView.value
                   ? Icons.view_agenda_outlined
                   : Icons.grid_view_rounded,
-              color: AppColors.primary,
+              color: theme.colorScheme.primary,
               size: 22,
             ),
             onPressed: controller.toggleViewMode,
           ),
         ),
-
-        // Cart Icon with Badge
-        IconButton(
-          tooltip: 'Cart',
-          icon: Badge(
-            backgroundColor: AppColors.error,
-            isLabelVisible: Get.isRegistered<CartController>() &&
-                (Get.find<CartController>().cart.value?.items.isNotEmpty ?? false),
-            label: Obx(() {
-              if (!Get.isRegistered<CartController>()) return const Text('0');
-              final count =
-                  Get.find<CartController>().cart.value?.items.length ?? 0;
-              return Text('$count');
-            }),
-            child: const Icon(Icons.shopping_bag_outlined, size: 22),
-          ),
-          onPressed: () => Get.toNamed('/cart'),
-        ),
+        Obx(() {
+          final count = cartController.cart.value?.items.length ?? 0;
+          return IconButton(
+            tooltip: 'cart'.tr,
+            icon: Badge(
+              backgroundColor: AppColors.error,
+              textColor: Colors.white,
+              isLabelVisible: count > 0,
+              label: Text('$count'),
+              child: const Icon(Icons.shopping_bag_outlined, size: 22),
+            ),
+            onPressed: () => Get.toNamed(AppRoutes.cart),
+          );
+        }),
         const SizedBox(width: 4),
       ],
     );
   }
 
   Widget _buildSearchBar(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.md,
@@ -136,9 +117,12 @@ class ProductListPage extends GetView<ProductController> {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: isDark ? 0.25 : 0.5),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.04),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -149,10 +133,10 @@ class ProductListPage extends GetView<ProductController> {
           onChanged: controller.onSearchChanged,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: 'Search products by name or category...',
+            hintText: 'search_products_hint'.tr,
             hintStyle: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondaryLight.withValues(alpha: 0.8),
+              color: secondaryColor,
             ),
             prefixIcon: const Icon(
               Icons.search_rounded,
@@ -174,16 +158,19 @@ class ProductListPage extends GetView<ProductController> {
                       Icons.tune_rounded,
                       color: controller.selectedSort.value != 'default'
                           ? AppColors.primary
-                          : AppColors.textSecondaryLight,
+                          : secondaryColor,
                       size: 20,
                     ),
-                    tooltip: 'Sort Options',
+                    tooltip: 'sort_options'.tr,
                     onPressed: () => _showSortBottomSheet(context, theme),
                   ),
                 ],
               );
             }),
             border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            filled: false,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.md,
               vertical: 14,
@@ -214,15 +201,18 @@ class ProductListPage extends GetView<ProductController> {
           itemBuilder: (context, index) {
             final cat = categories[index];
             final isSelected = current == cat;
+            final displayLabel = cat == 'All' ? 'all'.tr : cat;
 
             return ChoiceChip(
-              label: Text(cat),
+              label: Text(displayLabel),
               selected: isSelected,
               onSelected: (_) => controller.setCategory(cat),
               selectedColor: AppColors.primary,
               backgroundColor: theme.cardColor,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                color: isSelected
+                    ? Colors.white
+                    : theme.colorScheme.onSurface,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 12,
               ),
@@ -231,7 +221,7 @@ class ProductListPage extends GetView<ProductController> {
                 side: BorderSide(
                   color: isSelected
                       ? AppColors.primary
-                      : theme.dividerColor.withValues(alpha: 0.1),
+                      : theme.dividerColor.withValues(alpha: 0.35),
                 ),
               ),
               showCheckmark: false,
@@ -252,16 +242,16 @@ class ProductListPage extends GetView<ProductController> {
       String sortLabel = '';
       switch (sort) {
         case 'price_asc':
-          sortLabel = 'Price: Low to High';
+          sortLabel = 'sort_price_asc'.tr;
           break;
         case 'price_desc':
-          sortLabel = 'Price: High to Low';
+          sortLabel = 'sort_price_desc'.tr;
           break;
         case 'rating':
-          sortLabel = 'Top Rated';
+          sortLabel = 'sort_rating'.tr;
           break;
         case 'popular':
-          sortLabel = 'Best Selling';
+          sortLabel = 'sort_popular'.tr;
           break;
       }
 
@@ -278,14 +268,14 @@ class ProductListPage extends GetView<ProductController> {
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Sorted by: $sortLabel',
+                    '${'sorted_by'.tr}: $sortLabel',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -313,7 +303,7 @@ class ProductListPage extends GetView<ProductController> {
   Widget _buildProductList(BuildContext context, ThemeData theme) {
     return Obx(() {
       if (controller.isLoading.value && controller.products.isEmpty) {
-        return const Center(child: AppLoading(message: 'Loading products...'));
+        return Center(child: AppLoading(message: 'loading_products'.tr));
       }
 
       if (controller.errorMessage.value.isNotEmpty &&
@@ -329,26 +319,22 @@ class ProductListPage extends GetView<ProductController> {
       final items = controller.filteredProducts;
 
       if (items.isEmpty) {
+        final hasActiveFilter = controller.searchQuery.value.isNotEmpty ||
+            controller.selectedCategory.value != 'All';
+
         return Center(
           child: AppEmpty(
-            message: controller.searchQuery.value.isNotEmpty ||
-                    controller.selectedCategory.value != 'All'
-                ? 'No products match your filters'
-                : 'No products found',
-            actionLabel: controller.searchQuery.value.isNotEmpty ||
-                    controller.selectedCategory.value != 'All'
-                ? 'Reset Filters'
-                : 'Add Product',
-            onAction: () {
-              if (controller.searchQuery.value.isNotEmpty ||
-                  controller.selectedCategory.value != 'All') {
-                controller.clearSearch();
-                controller.setCategory('All');
-                controller.setSort('default');
-              } else {
-                Get.toNamed('/products/create');
-              }
-            },
+            message: hasActiveFilter
+                ? 'no_products_match'.tr
+                : 'no_products_found'.tr,
+            actionLabel: hasActiveFilter ? 'reset_filters'.tr : null,
+            onAction: hasActiveFilter
+                ? () {
+                    controller.clearSearch();
+                    controller.setCategory('All');
+                    controller.setSort('default');
+                  }
+                : null,
           ),
         );
       }
@@ -362,7 +348,7 @@ class ProductListPage extends GetView<ProductController> {
                   AppDimensions.md,
                   AppDimensions.xs,
                   AppDimensions.md,
-                  80,
+                  AppDimensions.xl,
                 ),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -380,14 +366,6 @@ class ProductListPage extends GetView<ProductController> {
                       arguments: product.id,
                     ),
                     onAddToCartTap: () => _handleAddToCart(product),
-                    onEdit: () async {
-                      final result = await Get.toNamed(
-                        '/products/edit',
-                        arguments: product.id,
-                      );
-                      if (result == true) controller.fetchProducts();
-                    },
-                    onDelete: () => controller.deleteProduct(product.id),
                   );
                 },
               )
@@ -396,7 +374,7 @@ class ProductListPage extends GetView<ProductController> {
                   AppDimensions.md,
                   AppDimensions.xs,
                   AppDimensions.md,
-                  80,
+                  AppDimensions.xl,
                 ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
@@ -407,14 +385,7 @@ class ProductListPage extends GetView<ProductController> {
                       '/products/${product.id}',
                       arguments: product.id,
                     ),
-                    onEdit: () async {
-                      final result = await Get.toNamed(
-                        '/products/edit',
-                        arguments: product.id,
-                      );
-                      if (result == true) controller.fetchProducts();
-                    },
-                    onDelete: () => controller.deleteProduct(product.id),
+                    onAddToCartTap: () => _handleAddToCart(product),
                   );
                 },
               ),
@@ -425,16 +396,10 @@ class ProductListPage extends GetView<ProductController> {
   void _showSortBottomSheet(BuildContext context, ThemeData theme) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
+      builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.md,
-              vertical: AppDimensions.md,
-            ),
+            padding: const EdgeInsets.all(AppDimensions.md),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,24 +409,24 @@ class ProductListPage extends GetView<ProductController> {
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: theme.dividerColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 const SizedBox(height: AppDimensions.md),
                 Text(
-                  'Sort Products',
+                  'sort_products'.tr,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: AppDimensions.sm),
-                _buildSortRadio(context, 'Featured / Default', 'default'),
-                _buildSortRadio(context, 'Price: Low to High', 'price_asc'),
-                _buildSortRadio(context, 'Price: High to Low', 'price_desc'),
-                _buildSortRadio(context, 'Top Rated', 'rating'),
-                _buildSortRadio(context, 'Best Selling', 'popular'),
+                _buildSortRadio(ctx, 'sort_default'.tr, 'default'),
+                _buildSortRadio(ctx, 'sort_price_asc'.tr, 'price_asc'),
+                _buildSortRadio(ctx, 'sort_price_desc'.tr, 'price_desc'),
+                _buildSortRadio(ctx, 'sort_rating'.tr, 'rating'),
+                _buildSortRadio(ctx, 'sort_popular'.tr, 'popular'),
               ],
             ),
           ),

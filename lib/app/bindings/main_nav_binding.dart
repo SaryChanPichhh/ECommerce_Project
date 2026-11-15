@@ -14,10 +14,14 @@ import '../../features/orders/presentation/controllers/order_controller.dart';
 import '../../features/profile/presentation/controllers/profile_controller.dart';
 import '../controllers/main_nav_controller.dart';
 
-import '../../features/favorite/data/datasources/favorite_remote_datasource.dart';
-import '../../features/favorite/data/repositories/favorite_repository_impl.dart';
-import '../../features/favorite/domain/usecases/get_favorites.dart';
-import '../../features/favorite/presentation/controllers/favorite_controller.dart';
+import '../../features/cart/presentation/bindings/cart_binding.dart';
+import '../../features/categories/domain/usecases/get_categories_usecase.dart';
+import '../../features/categories/presentation/bindings/categories_binding.dart';
+import '../../features/products/data/datasources/product_remote_datasource.dart';
+import '../../features/products/data/repositories/product_repository_impl.dart';
+import '../../features/products/domain/usecases/get_products.dart';
+import '../../features/favorite/presentation/bindings/favorite_binding.dart';
+import '../../features/search/presentation/controllers/search_catalog_controller.dart';
 
 /// Binding for the main navigation page.
 /// Registers all controllers needed by the bottom nav tabs.
@@ -47,56 +51,91 @@ class MainNavBinding extends Bindings {
       () => GetCurrentUserUseCase(repository: Get.find<AuthRepositoryImpl>()),
     );
 
+    // Products dependencies (needed by Home)
+    if (!Get.isRegistered<ProductRemoteDataSource>()) {
+      Get.lazyPut<ProductRemoteDataSource>(
+        () => ProductRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<ProductRepositoryImpl>()) {
+      Get.lazyPut(
+        () => ProductRepositoryImpl(
+          remoteDataSource: Get.find<ProductRemoteDataSource>(),
+        ),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<GetProductsUseCase>()) {
+      Get.lazyPut(
+        () => GetProductsUseCase(repository: Get.find<ProductRepositoryImpl>()),
+        fenix: true,
+      );
+    }
+
     // Home controller
     Get.lazyPut(
       () => HomeController(
         logoutUseCase: Get.find<LogoutUseCase>(),
         getCurrentUserUseCase: Get.find<GetCurrentUserUseCase>(),
+        getProductsUseCase: Get.find<GetProductsUseCase>(),
       ),
+      fenix: true,
     );
 
     // Order dependencies
-    Get.lazyPut<OrderRemoteDataSource>(
-      () => OrderRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut(
-      () => OrderRepositoryImpl(
-        remoteDataSource: Get.find<OrderRemoteDataSource>(),
-      ),
-    );
-    Get.lazyPut(
-      () => GetOrdersUseCase(repository: Get.find<OrderRepositoryImpl>()),
-    );
-    Get.lazyPut(
-      () => OrderController(
-        getOrdersUseCase: Get.find<GetOrdersUseCase>(),
-      ),
-    );
+    if (!Get.isRegistered<OrderRemoteDataSource>()) {
+      Get.lazyPut<OrderRemoteDataSource>(
+        () => OrderRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<OrderRepositoryImpl>()) {
+      Get.lazyPut(
+        () => OrderRepositoryImpl(
+          remoteDataSource: Get.find<OrderRemoteDataSource>(),
+        ),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<GetOrdersUseCase>()) {
+      Get.lazyPut(
+        () => GetOrdersUseCase(repository: Get.find<OrderRepositoryImpl>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<OrderController>()) {
+      Get.lazyPut(
+        () => OrderController(
+          getOrdersUseCase: Get.find<GetOrdersUseCase>(),
+        ),
+        fenix: true,
+      );
+    }
 
     // Profile controller
-    Get.lazyPut(
-      () => ProfileController(
-        getCurrentUserUseCase: Get.find<GetCurrentUserUseCase>(),
-        logoutUseCase: Get.find<LogoutUseCase>(),
-      ),
-    );
+    if (!Get.isRegistered<ProfileController>()) {
+      Get.lazyPut(
+        () => ProfileController(
+          getCurrentUserUseCase: Get.find<GetCurrentUserUseCase>(),
+          logoutUseCase: Get.find<LogoutUseCase>(),
+        ),
+        fenix: true,
+      );
+    }
 
-    // Favorite dependencies
-    Get.lazyPut<FavoriteRemoteDataSource>(
-      () => FavoriteRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut(
-      () => FavoriteRepositoryImpl(
-        remoteDataSource: Get.find<FavoriteRemoteDataSource>(),
-      ),
-    );
-    Get.lazyPut(
-      () => GetFavoritesUseCase(Get.find<FavoriteRepositoryImpl>()),
-    );
-    Get.lazyPut(
-      () => FavoriteController(
-        getFavoritesUseCase: Get.find<GetFavoritesUseCase>(),
-      ),
-    );
+    // Categories, Search, Cart, and Favorite dependencies (preserve Add/Remove usecases)
+    CategoriesBinding().dependencies();
+    if (!Get.isRegistered<SearchCatalogController>()) {
+      Get.lazyPut(
+        () => SearchCatalogController(
+          getProductsUseCase: Get.find<GetProductsUseCase>(),
+          getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
+        ),
+        fenix: true,
+      );
+    }
+    CartBinding().dependencies();
+    FavoriteBinding().dependencies();
   }
 }

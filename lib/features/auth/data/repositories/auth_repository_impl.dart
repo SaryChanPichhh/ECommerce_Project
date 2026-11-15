@@ -16,22 +16,19 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
     required AuthRemoteDataSource remoteDataSource,
     required AuthLocalDataSource localDataSource,
-  })  : _remoteDataSource = remoteDataSource,
-        _localDataSource = localDataSource;
+  }) : _remoteDataSource = remoteDataSource,
+       _localDataSource = localDataSource;
 
   @override
-  Future<User> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<User> login({required String email, required String password}) async {
     try {
       final response = await _remoteDataSource.login(
         LoginRequestModel(email: email, password: password),
       );
-
       // Extract token and user data from response
-      final token = response['token'] as String? ??
-          response['access_token'] as String? ??
+      final token =
+          response["data"]['token'] as String? ??
+          response["data"]['access_token'] as String? ??
           '';
       final refreshToken = response['refresh_token'] as String?;
       final userData = response['user'] as Map<String, dynamic>? ?? response;

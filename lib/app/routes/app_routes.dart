@@ -8,6 +8,7 @@ abstract class AppRoutes {
   static const String payment = '/payment';
   static const String editAddress = '/edit-address';
   static const String products = '/products';
+  static const String categoryDetail = '/category-detail';
   static const String productDetail = '/products/:id';
   static const String productCreate = '/products/create';
   static const String productEdit = '/products/edit';

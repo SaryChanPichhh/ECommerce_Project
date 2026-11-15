@@ -310,7 +310,7 @@ class CartController extends GetxController {
     }
   }
 
-  Future<bool> checkout() async {
+  Future<bool> checkout({String paymentMethod = 'ABA'}) async {
     if (!isAuthenticated) {
       final shouldLogin = await Helpers.showConfirmDialog(
         title: 'login_required'.tr,

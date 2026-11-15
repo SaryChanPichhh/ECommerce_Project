@@ -136,6 +136,8 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       return _mockCart;
     } on UnauthorizedException {
       rethrow;
+    } on AppException {
+      rethrow;
     } catch (_) {
       // Mock update
       final updatedItems = List<CartItemModel>.from(_mockCart.items.cast<CartItemModel>());
@@ -242,11 +244,13 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
   @override
   Future<void> removeCartItem(String cartItemId) async {
-    try {
-      await _apiClient.delete(ApiConstants.customerCartItemDetail(cartItemId));
-    } on UnauthorizedException {
-      rethrow;
-    } catch (_) {}
+    if (!cartItemId.startsWith('c_') && cartItemId != '1' && cartItemId != '2') {
+      try {
+        await _apiClient.delete(ApiConstants.customerCartItemDetail(cartItemId));
+      } on UnauthorizedException {
+        rethrow;
+      } catch (_) {}
+    }
     final updatedItems = _mockCart.items
         .where((i) => i.id != cartItemId)
         .cast<CartItemModel>()

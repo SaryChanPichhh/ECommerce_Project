@@ -47,8 +47,16 @@ class LocalStorage {
       _storage.write(StorageKeys.userId, id);
 
   /// Get the stored user data as a Map.
-  Map<String, dynamic>? getUserData() =>
-      _storage.read<Map<String, dynamic>>(StorageKeys.userData);
+  Map<String, dynamic>? getUserData() {
+    final raw = _storage.read(StorageKeys.userData);
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return null;
+  }
 
   /// Save user data as a Map.
   Future<void> saveUserData(Map<String, dynamic> data) =>

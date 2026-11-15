@@ -21,39 +21,48 @@ class ProductBinding extends Bindings {
   void dependencies() {
     Get.lazyPut<ProductRemoteDataSource>(
       () => ProductRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
+      fenix: true,
     );
 
     Get.lazyPut(
       () => ProductRepositoryImpl(
         remoteDataSource: Get.find<ProductRemoteDataSource>(),
       ),
+      fenix: true,
     );
 
     Get.lazyPut(
       () => GetProductsUseCase(repository: Get.find<ProductRepositoryImpl>()),
+      fenix: true,
     );
     Get.lazyPut(
       () => GetProductUseCase(repository: Get.find<ProductRepositoryImpl>()),
+      fenix: true,
     );
     Get.lazyPut(
       () => GetProductVariantsUseCase(
         repository: Get.find<ProductRepositoryImpl>(),
       ),
+      fenix: true,
     );
     Get.lazyPut(
       () => CreateProductUseCase(repository: Get.find<ProductRepositoryImpl>()),
+      fenix: true,
     );
     Get.lazyPut(
       () => UpdateProductUseCase(repository: Get.find<ProductRepositoryImpl>()),
+      fenix: true,
     );
     Get.lazyPut(
       () => DeleteProductUseCase(repository: Get.find<ProductRepositoryImpl>()),
+      fenix: true,
     );
 
     // Categories dependencies for category dropdown in ProductForm
     if (!Get.isRegistered<CategoryRemoteDataSource>()) {
       Get.lazyPut<CategoryRemoteDataSource>(
         () => CategoryRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
+        fenix: true,
       );
     }
     if (!Get.isRegistered<CategoryRepository>()) {
@@ -61,11 +70,13 @@ class ProductBinding extends Bindings {
         () => CategoryRepositoryImpl(
           remoteDataSource: Get.find<CategoryRemoteDataSource>(),
         ),
+        fenix: true,
       );
     }
     if (!Get.isRegistered<GetCategoriesUseCase>()) {
       Get.lazyPut(
         () => GetCategoriesUseCase(repository: Get.find<CategoryRepository>()),
+        fenix: true,
       );
     }
 
@@ -73,7 +84,9 @@ class ProductBinding extends Bindings {
       () => ProductController(
         getProductsUseCase: Get.find<GetProductsUseCase>(),
         deleteProductUseCase: Get.find<DeleteProductUseCase>(),
+        getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
       ),
+      fenix: true,
     );
 
     Get.lazyPut(
@@ -84,6 +97,7 @@ class ProductBinding extends Bindings {
         getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
         r2Service: Get.find<CloudflareR2Service>(),
       ),
+      fenix: true,
     );
   }
 }

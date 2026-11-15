@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../controllers/product_form_controller.dart';
@@ -142,12 +143,12 @@ class ProductForm extends GetView<ProductFormController> {
                   ] else if (imgUrl.isNotEmpty) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                      child: Image.network(
-                        imgUrl,
+                      child: AppNetworkImage(
+                        imageUrl: imgUrl,
                         width: double.infinity,
                         height: 180,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(isDark),
+                        errorWidget: _buildPlaceholder(isDark),
                       ),
                     ),
                     Positioned(

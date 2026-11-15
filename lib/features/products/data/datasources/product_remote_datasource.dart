@@ -181,7 +181,11 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       category: model.category,
       categoryId: model.categoryId,
       storeId: model.storeId,
+      storeName: model.storeName,
+      storeLogoUrl: model.storeLogoUrl,
       imageUrl: model.imageUrl,
+      images: model.images,
+      tags: model.tags,
       isActive: model.isActive,
       isFavorite: model.isFavorite,
       ratingAverage: model.ratingAverage,
@@ -236,25 +240,28 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       );
 
       final Set<String> existingIds = remoteList.map((p) => p.id).toSet();
-      final freshLocals = _locallyCreatedProducts
-          .where((p) => !existingIds.contains(p.id))
-          .toList();
-      var combined = [...freshLocals, ...remoteList];
+      Iterable<ProductModel> freshLocals = _locallyCreatedProducts.where(
+        (p) => !existingIds.contains(p.id),
+      );
       if (category != null && category.isNotEmpty) {
-        combined = combined
-            .where((p) =>
-                p.category?.toLowerCase() == category.toLowerCase() ||
-                p.categoryId == category)
-            .toList();
+        final target = category.toLowerCase();
+        freshLocals = freshLocals.where(
+          (p) =>
+              p.category?.toLowerCase() == target ||
+              p.categoryId?.toLowerCase() == target,
+        );
       }
-      return combined;
+      // Note: /public/products/?category_id= filters server-side and list items
+      // omit nested category fields, so do not locally drop remoteList items.
+      return [...freshLocals, ...remoteList];
     } on AppException {
       var list = [..._locallyCreatedProducts, ...products];
       if (category != null && category.isNotEmpty) {
+        final target = category.toLowerCase();
         list = list
             .where((p) =>
-                p.category?.toLowerCase() == category.toLowerCase() ||
-                p.categoryId == category)
+                p.category?.toLowerCase() == target ||
+                p.categoryId?.toLowerCase() == target)
             .toList();
       }
       return list;
@@ -272,7 +279,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           : data as Map<String, dynamic>;
       final model = ProductModel.fromJson(productData);
       return await _enrichWithVariants(model);
-    } on AppException {
+    } on AppException catch (e) {
+      if (e is NotFoundException) {
+        rethrow;
+      }
       final allLocal = [..._locallyCreatedProducts, ...products];
       final matchedProducts = allLocal.where((p) => p.id == id);
       if (matchedProducts.isNotEmpty) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -17,11 +18,10 @@ class LoginForm extends GetView<LoginController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Email field
           AppTextField(
             controller: controller.emailController,
-            label: 'Email',
-            hint: 'Enter your email',
+            label: 'email'.tr,
+            hint: 'enter_your_email'.tr,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             prefixIcon: const Icon(Icons.email_outlined),
@@ -29,12 +29,11 @@ class LoginForm extends GetView<LoginController> {
           ),
           const SizedBox(height: AppDimensions.md),
 
-          // Password field
           Obx(
             () => AppTextField(
               controller: controller.passwordController,
-              label: 'Password',
-              hint: 'Enter your password',
+              label: 'password'.tr,
+              hint: 'enter_your_password'.tr,
               obscureText: controller.obscurePassword.value,
               textInputAction: TextInputAction.done,
               prefixIcon: const Icon(Icons.lock_outlined),
@@ -51,7 +50,6 @@ class LoginForm extends GetView<LoginController> {
           ),
           const SizedBox(height: AppDimensions.lg),
 
-          // Error message
           Obx(() {
             if (controller.errorMessage.value.isNotEmpty) {
               return Padding(
@@ -69,10 +67,9 @@ class LoginForm extends GetView<LoginController> {
             return const SizedBox.shrink();
           }),
 
-          // Login button
           Obx(
             () => AppButton(
-              text: 'Login',
+              text: 'login'.tr,
               onPressed: controller.login,
               isLoading: controller.isLoading.value,
             ),

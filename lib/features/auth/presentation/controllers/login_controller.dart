@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../home/presentation/controllers/home_controller.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../domain/usecases/login.dart';
 
 /// Controller for the login page.
@@ -37,10 +39,17 @@ class LoginController extends GetxController {
     errorMessage.value = '';
 
     try {
-      // await _loginUseCase(
-      //   email: emailController.text.trim(),
-      //   password: passwordController.text,
-      // );
+      final user = await _loginUseCase(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().currentUser.value = user;
+      }
+      if (Get.isRegistered<ProfileController>()) {
+        Get.find<ProfileController>().user.value = user;
+      }
 
       Helpers.showSuccess('Login successful');
       Get.offAllNamed('/main');

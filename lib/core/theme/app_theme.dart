@@ -27,13 +27,50 @@ class AppTheme {
         ),
         appBarTheme: const AppBarTheme(
           elevation: 0,
+          scrolledUnderElevation: 1,
           centerTitle: true,
           backgroundColor: AppColors.surfaceLight,
           foregroundColor: AppColors.textPrimaryLight,
           titleTextStyle: TextStyle(
+            fontFamily: 'KantumruyPro',
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimaryLight,
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: AppColors.surfaceLight,
+          selectedColor: AppColors.primary,
+          secondarySelectedColor: AppColors.primary,
+          labelStyle: AppTextStyles.labelMedium.copyWith(
+            fontFamily: 'KantumruyPro',
+            color: AppColors.textPrimaryLight,
+          ),
+          secondaryLabelStyle: AppTextStyles.labelMedium.copyWith(
+            fontFamily: 'KantumruyPro',
+            color: Colors.white,
+          ),
+          side: const BorderSide(color: AppColors.borderLight),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
+          ),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surfaceLight,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+        ),
+        tabBarTheme: TabBarThemeData(
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondaryLight,
+          labelStyle: AppTextStyles.labelLarge.copyWith(
+            fontFamily: 'KantumruyPro',
+          ),
+          unselectedLabelStyle: AppTextStyles.bodyMedium.copyWith(
+            fontFamily: 'KantumruyPro',
           ),
         ),
         cardTheme: CardThemeData(
@@ -137,13 +174,50 @@ class AppTheme {
         ),
         appBarTheme: const AppBarTheme(
           elevation: 0,
+          scrolledUnderElevation: 1,
           centerTitle: true,
           backgroundColor: AppColors.surfaceDark,
           foregroundColor: AppColors.textPrimaryDark,
           titleTextStyle: TextStyle(
+            fontFamily: 'KantumruyPro',
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimaryDark,
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: AppColors.surfaceDark,
+          selectedColor: AppColors.primary,
+          secondarySelectedColor: AppColors.primary,
+          labelStyle: AppTextStyles.labelMedium.copyWith(
+            fontFamily: 'KantumruyPro',
+            color: AppColors.textPrimaryDark,
+          ),
+          secondaryLabelStyle: AppTextStyles.labelMedium.copyWith(
+            fontFamily: 'KantumruyPro',
+            color: Colors.white,
+          ),
+          side: const BorderSide(color: AppColors.borderDark),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusRound),
+          ),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.surfaceDark,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+        ),
+        tabBarTheme: TabBarThemeData(
+          indicatorColor: AppColors.primaryLight,
+          labelColor: AppColors.primaryLight,
+          unselectedLabelColor: AppColors.textSecondaryDark,
+          labelStyle: AppTextStyles.labelLarge.copyWith(
+            fontFamily: 'KantumruyPro',
+          ),
+          unselectedLabelStyle: AppTextStyles.bodyMedium.copyWith(
+            fontFamily: 'KantumruyPro',
           ),
         ),
         cardTheme: CardThemeData(

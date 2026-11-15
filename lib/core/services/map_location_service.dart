@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import '../constants/app_constants.dart';
 
@@ -28,6 +29,51 @@ class MapLocationService {
       },
     ),
   );
+
+  /// Standard OpenStreetMap tile User-Agent headers to comply with OSM usage policy.
+  static const Map<String, String> osmHeaders = {
+    'User-Agent': 'FinalProjectECommerce/1.0 (Flutter; Android)',
+  };
+
+  /// Calculates slippy map tile X index from longitude and zoom.
+  static int lon2tileX(double lon, int zoom) {
+    final n = 1 << zoom;
+    return ((lon + 180.0) / 360.0 * n).floor().clamp(0, n - 1);
+  }
+
+  /// Calculates slippy map tile Y index from latitude and zoom.
+  static int lat2tileY(double lat, int zoom) {
+    final n = 1 << zoom;
+    final latRad = lat.clamp(-85.0511, 85.0511) * math.pi / 180.0;
+    return ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * n)
+        .floor()
+        .clamp(0, n - 1);
+  }
+
+  /// Calculates longitude from slippy map tile X index and zoom.
+  static double tileX2lon(num x, int zoom) {
+    return x / (1 << zoom) * 360.0 - 180.0;
+  }
+
+  /// Calculates latitude from slippy map tile Y index and zoom.
+  static double tileY2lat(num y, int zoom) {
+    final n = math.pi - 2.0 * math.pi * y / (1 << zoom);
+    return 180.0 / math.pi * math.atan(0.5 * (math.exp(n) - math.exp(-n)));
+  }
+
+  /// Returns standard OpenStreetMap slippy tile URL for (lat, lng) at [zoom].
+  static String getOsmTileUrl(double lat, double lng, {int zoom = 15}) {
+    final x = lon2tileX(lng, zoom);
+    final y = lat2tileY(lat, zoom);
+    return 'https://tile.openstreetmap.org/$zoom/$x/$y.png';
+  }
+
+  /// Returns Esri World Imagery satellite tile URL for (lat, lng) at [zoom].
+  static String getSatelliteTileUrl(double lat, double lng, {int zoom = 15}) {
+    final x = lon2tileX(lng, zoom);
+    final y = lat2tileY(lat, zoom);
+    return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$y/$x';
+  }
 
   /// Preset landmarks in Phnom Penh, Cambodia
   static const List<LocationSearchResult> presetLocations = [

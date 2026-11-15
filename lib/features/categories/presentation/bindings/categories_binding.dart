@@ -9,21 +9,33 @@ import '../controllers/categories_controller.dart';
 class CategoriesBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<CategoryRemoteDataSource>(
-      () => CategoryRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
-    );
-    Get.lazyPut<CategoryRepository>(
-      () => CategoryRepositoryImpl(
-        remoteDataSource: Get.find<CategoryRemoteDataSource>(),
-      ),
-    );
-    Get.lazyPut(
-      () => GetCategoriesUseCase(repository: Get.find<CategoryRepository>()),
-    );
-    Get.lazyPut(
-      () => CategoriesController(
-        getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
-      ),
-    );
+    if (!Get.isRegistered<CategoryRemoteDataSource>()) {
+      Get.lazyPut<CategoryRemoteDataSource>(
+        () => CategoryRemoteDataSourceImpl(apiClient: Get.find<ApiClient>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<CategoryRepository>()) {
+      Get.lazyPut<CategoryRepository>(
+        () => CategoryRepositoryImpl(
+          remoteDataSource: Get.find<CategoryRemoteDataSource>(),
+        ),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<GetCategoriesUseCase>()) {
+      Get.lazyPut(
+        () => GetCategoriesUseCase(repository: Get.find<CategoryRepository>()),
+        fenix: true,
+      );
+    }
+    if (!Get.isRegistered<CategoriesController>()) {
+      Get.lazyPut(
+        () => CategoriesController(
+          getCategoriesUseCase: Get.find<GetCategoriesUseCase>(),
+        ),
+        fenix: true,
+      );
+    }
   }
 }

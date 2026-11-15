@@ -14,7 +14,11 @@ class ProductModel extends Product {
     super.category,
     super.categoryId,
     super.storeId,
+    super.storeName,
+    super.storeLogoUrl,
     super.imageUrl,
+    super.images,
+    super.tags,
     super.isActive,
     super.isFavorite,
     super.ratingAverage,
@@ -57,18 +61,66 @@ class ProductModel extends Product {
       catId = json['category_id']?.toString();
     }
 
-    // Parse store id
+    // Parse store info
     String? strId;
+    String? strName;
+    String? strLogo;
     if (json['store'] is Map) {
-      strId = json['store']['id']?.toString();
-    } else if (json['store_id'] != null) {
-      strId = json['store_id']?.toString();
+      final storeMap = json['store'] as Map;
+      strId = storeMap['id']?.toString();
+      strName = storeMap['name']?.toString();
+      strLogo = (storeMap['logo_url'] ?? storeMap['banner_url'])?.toString();
+    } else {
+      if (json['store_id'] != null) {
+        strId = json['store_id']?.toString();
+      }
+      if (json['store_name'] != null) {
+        strName = json['store_name']?.toString();
+      }
     }
 
-    // Parse primary image
-    final primaryImg = json['primary_image_url'] as String? ??
+    // Parse primary image & gallery images
+    final rawPrimaryImg = json['primary_image_url'] as String? ??
         json['image_url'] as String? ??
         json['image'] as String?;
+
+    final parsedImages = <String>[];
+    if (json['images'] is List) {
+      for (final item in json['images'] as List) {
+        String? url;
+        if (item is Map) {
+          url = (item['image_url'] ?? item['url'])?.toString();
+        } else if (item is String) {
+          url = item;
+        }
+        if (url != null && url.trim().isNotEmpty && !parsedImages.contains(url)) {
+          parsedImages.add(url.trim());
+        }
+      }
+    }
+    final primaryImg =
+        (rawPrimaryImg != null && rawPrimaryImg.trim().isNotEmpty)
+            ? rawPrimaryImg.trim()
+            : (parsedImages.isNotEmpty ? parsedImages.first : null);
+    if (primaryImg != null && !parsedImages.contains(primaryImg)) {
+      parsedImages.insert(0, primaryImg);
+    }
+
+    // Parse tags
+    final parsedTags = <String>[];
+    if (json['tags'] is List) {
+      for (final item in json['tags'] as List) {
+        String? tagName;
+        if (item is Map) {
+          tagName = item['name']?.toString();
+        } else if (item is String) {
+          tagName = item;
+        }
+        if (tagName != null && tagName.trim().isNotEmpty) {
+          parsedTags.add(tagName.trim());
+        }
+      }
+    }
 
     // Parse status / active
     final status = json['status']?.toString();
@@ -136,12 +188,20 @@ class ProductModel extends Product {
       category: categoryName,
       categoryId: catId,
       storeId: strId,
+      storeName: strName,
+      storeLogoUrl: strLogo,
       imageUrl: primaryImg,
+      images: parsedImages,
+      tags: parsedTags,
       isActive: active,
       isFavorite: json['is_favorite'] as bool? ?? false,
       ratingAverage: ratingAvg,
-      ratingCount: json['rating_count'] as int? ?? 0,
-      soldCount: json['sold_count'] as int? ?? 0,
+      ratingCount: json['rating_count'] is num
+          ? (json['rating_count'] as num).toInt()
+          : int.tryParse(json['rating_count']?.toString() ?? '') ?? 0,
+      soldCount: json['sold_count'] is num
+          ? (json['sold_count'] as num).toInt()
+          : int.tryParse(json['sold_count']?.toString() ?? '') ?? 0,
       variants: parsedVariants,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
@@ -166,8 +226,12 @@ class ProductModel extends Product {
       'category': category,
       if (categoryId != null) 'category_id': categoryId,
       if (storeId != null) 'store_id': storeId,
+      if (storeName != null) 'store_name': storeName,
+      if (storeLogoUrl != null) 'store_logo_url': storeLogoUrl,
       'primary_image_url': imageUrl,
       'image_url': imageUrl,
+      if (images.isNotEmpty) 'images': images,
+      if (tags.isNotEmpty) 'tags': tags,
       'is_active': isActive,
       'status': isActive ? 'active' : 'inactive',
       'is_favorite': isFavorite,
@@ -193,7 +257,11 @@ class ProductModel extends Product {
       category: product.category,
       categoryId: product.categoryId,
       storeId: product.storeId,
+      storeName: product.storeName,
+      storeLogoUrl: product.storeLogoUrl,
       imageUrl: product.imageUrl,
+      images: product.images,
+      tags: product.tags,
       isActive: product.isActive,
       isFavorite: product.isFavorite,
       ratingAverage: product.ratingAverage,

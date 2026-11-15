@@ -3,7 +3,9 @@ import '../../features/auth/presentation/bindings/auth_binding.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/home/presentation/bindings/home_binding.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/products/presentation/bindings/category_binding.dart';
 import '../../features/products/presentation/bindings/product_binding.dart';
+import '../../features/products/presentation/pages/category_detail_page.dart';
 import '../../features/products/presentation/pages/product_list_page.dart';
 import '../../features/products/presentation/pages/product_detail_page.dart';
 import '../../features/products/presentation/pages/product_form_page.dart';
@@ -68,6 +70,11 @@ class AppPages {
       name: AppRoutes.products,
       page: () => const ProductListPage(),
       binding: ProductBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.categoryDetail,
+      page: () => const CategoryDetailPage(),
+      binding: CategoryBinding(),
     ),
     GetPage(
       name: AppRoutes.productCreate,

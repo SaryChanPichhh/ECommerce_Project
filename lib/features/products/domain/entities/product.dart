@@ -12,7 +12,11 @@ class Product {
   final String? category;
   final String? categoryId;
   final String? storeId;
+  final String? storeName;
+  final String? storeLogoUrl;
   final String? imageUrl;
+  final List<String> images;
+  final List<String> tags;
   final bool isActive;
   final bool isFavorite;
   final double ratingAverage;
@@ -33,7 +37,11 @@ class Product {
     this.category,
     this.categoryId,
     this.storeId,
+    this.storeName,
+    this.storeLogoUrl,
     this.imageUrl,
+    this.images = const [],
+    this.tags = const [],
     this.isActive = true,
     this.isFavorite = false,
     this.ratingAverage = 0.0,
@@ -55,7 +63,11 @@ class Product {
     String? category,
     String? categoryId,
     String? storeId,
+    String? storeName,
+    String? storeLogoUrl,
     String? imageUrl,
+    List<String>? images,
+    List<String>? tags,
     bool? isActive,
     bool? isFavorite,
     double? ratingAverage,
@@ -76,7 +88,11 @@ class Product {
       category: category ?? this.category,
       categoryId: categoryId ?? this.categoryId,
       storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
+      storeLogoUrl: storeLogoUrl ?? this.storeLogoUrl,
       imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
+      tags: tags ?? this.tags,
       isActive: isActive ?? this.isActive,
       isFavorite: isFavorite ?? this.isFavorite,
       ratingAverage: ratingAverage ?? this.ratingAverage,
